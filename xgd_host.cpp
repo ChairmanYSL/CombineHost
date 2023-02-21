@@ -73,7 +73,6 @@ void XGD_HOST::init_config_dir()
 
     //init card brand
     dir.setPath(cur_config_dir);
-    qDebug()<<"config dir exist:"<<dir.exists();
     if(dir.exists())
     {
         CardBrand = dir.entryList();
@@ -93,11 +92,9 @@ void XGD_HOST::init_config_dir()
         //init AID config list
         ui->comboBox_AID->clear();
         dir.setPath(cur_config_dir+"/"+cur_brand+"/AID");
-        qDebug()<<"aid dir exist:"<<dir.exists();
         if(dir.exists())
         {
             file_list = dir.entryList();
-            qDebug()<<"file list count"<<file_list.count();
             if(file_list.count() > 2)
             {
                 file_list.removeFirst();
@@ -113,7 +110,6 @@ void XGD_HOST::init_config_dir()
         //init CAPK config list
         ui->comboBox_CAPK->clear();
         dir.setPath(cur_config_dir+"/"+cur_brand+"/CAPK");
-        qDebug()<<"capk dir exist:"<<dir.exists();
         if(dir.exists())
         {
             file_list = dir.entryList();
@@ -133,11 +129,9 @@ void XGD_HOST::init_config_dir()
         //init Exception File config list
         ui->comboBox_ExceptionFile->clear();
         dir.setPath(cur_config_dir+"/"+cur_brand+"/Exception_File");
-        qDebug()<<"exception file dir exist:"<<dir.exists();
         if(dir.exists())
         {
             file_list = dir.entryList();
-            qDebug()<<"file list count"<<file_list.count();
             if(file_list.count() > 2)
             {
                 file_list.removeFirst();
@@ -153,11 +147,9 @@ void XGD_HOST::init_config_dir()
         //init PreProcess config list
         ui->comboBox_PreProcess->clear();
         dir.setPath(cur_config_dir+"/"+cur_brand+"/PreProcess");
-        qDebug()<<"preprocess dir exist:"<<dir.exists();
         if(dir.exists())
         {
             file_list = dir.entryList();
-            qDebug()<<"file list count"<<file_list.count();
             if(file_list.count() > 2)
             {
                 file_list.removeFirst();
@@ -173,11 +165,9 @@ void XGD_HOST::init_config_dir()
         //init Revocation_CAPK config list
         ui->comboBox_Revokey->clear();
         dir.setPath(cur_config_dir+"/"+cur_brand+"/Revocation_CAPK");
-        qDebug()<<"revocation cert dir exist:"<<dir.exists();
         if(dir.exists())
         {
             file_list = dir.entryList();
-            qDebug()<<"file list count"<<file_list.count();
             if(file_list.count() > 2)
             {
                 file_list.removeFirst();
@@ -193,11 +183,9 @@ void XGD_HOST::init_config_dir()
         //init SimData config list
         ui->comboBox_SimData->clear();
         dir.setPath(cur_config_dir+"/"+cur_brand+"/SimData");
-        qDebug()<<"simdata dir exist:"<<dir.exists();
         if(dir.exists())
         {
             file_list = dir.entryList();
-            qDebug()<<"file list count"<<file_list.count();
             if(file_list.count() > 2)
             {
                 file_list.removeFirst();
@@ -213,11 +201,9 @@ void XGD_HOST::init_config_dir()
         //init DRL config list
         ui->comboBox_DRL->clear();
         dir.setPath(cur_config_dir+"/"+cur_brand+"/DRL");
-        qDebug()<<"simdata dir exist:"<<dir.exists();
         if(dir.exists())
         {
             file_list = dir.entryList();
-            qDebug()<<"file list count"<<file_list.count();
             if(file_list.count() > 2)
             {
                 file_list.removeFirst();
@@ -445,12 +431,15 @@ void XGD_HOST::deal_term_data(QByteArray term_data, MsgType msg_type)
             break;
         case AUTHORIZE_REQ_RECV:
             show_message("Authorization Request Message:\n");
+            deal_authorize_request();
             break;
         case FINANCE_CONFIRM_RECV:
             show_message("Finance Confirm Message:\n");
+            deal_finance_confirm();
             break;
         case BATCH_UPLOAD_RECV:
             show_message("Batch Upload Message:\n");
+            deal_batch_upload();
             break;
         case ADVICE_RECV:
             show_message("Advice Message:\n");
@@ -1685,105 +1674,28 @@ void XGD_HOST::on_pushButton_StartTrans_clicked()
 
 void XGD_HOST::deal_trans_result()
 {
-    quint8 trans_result = tlv_map.find("03").value().toUInt();
-    quint8 trans_outcome = tlv_map.find("DF23").value().toUInt();
-    quint8 trans_cvm = tlv_map.find("FF8109").value().toUInt();
+    QString trans_result = tlv_map.find("03").value();
+    QString cur_brand = ui->comboBox_Brand->currentText();
+    QString trans_outcome = tlv_map.find("DF23").value();
+    QString trans_cvm = tlv_map.find("FF8109").value(); //set for discover
     QString disp_message;
+    QByteArray temp_byte;
 
 //    tlv_map.find("03")->isNull();
+
     //show transaction result
-    switch (trans_result)
-    {
-        case 0x61:
-            show_message("TransResult:  Offline Approved\n");
-            break;
-        case 0x62:
-            show_message("TransResult:  Offline Declined\n");
-            break;
-        case 0x63:
-            show_message("TransResult:   Online Approved\n");
-            break;
-        case 0x64:
-            show_message("TransResult:   Online Declined\n");
-            break;
-        case 0x65:
-            show_message("TransResult:   Approved Please Sign\n");
-            break;
-        case 0x66:
-            show_message("TransResult:   Please use another Card\n");
-            break;
-        case 0x67:
-            show_message("TransResult:   Please enter PIN\n");
-            break;
-        case 0x68:
-            show_message("TransResult:   Please present card again\n");
-            break;
-        case 0x69:
-            show_message("TransResult:   Insert, Swipe the Card\n");
-            break;
-        case 0x6A:
-            show_message("TransResult:   Insert, Swipe the Card\n");
-            break;
-        default:
-            show_message("TransResult:   Invalid data\n");
-            break;
-    }
+    convertStringToHex(trans_result, temp_byte);
+    show_trans_result(cur_brand, temp_byte.at(0));
 
     //show transaction outcome
-    switch (trans_outcome)
-    {
-        case 0x01:
-            show_message("TransOutcome:  Card not accepted\n");
-            break;
-        case 0x02:
-            show_message("TransOutcome:  Please present only one card\n");
-            break;
-        case 0x03:
-            show_message("TransOutcome:  Offline Approved\n");
-            break;
-        case 0x04:
-            show_message("TransOutcome:  Offline Declined\n");
-            break;
-        case 0x05:
-            show_message("TransOutcome:  Online Approved\n");
-            break;
-        case 0x06:
-            show_message("TransOutcome:  Online Declined\n");
-            break;
-        case 0x1A:
-            show_message("TransOutcome:  Approved Please Sign\n");
-            break;
-        case 0x1B:
-            show_message("TransOutcome:  Please enter PIN\n");
-            break;
-        case 0x1C:
-            show_message("TransOutcome:  Insert, Swipe the Card\n");
-            break;
-        case 0x1D:
-            show_message("TransOutcome:   Please use another Card\n");
-            break;
-        case 0x1E:
-            show_message("TransOutcome:   Please present card again\n");
-            break;
-        case 0x1F:
-            show_message("TransOutcome:   Please present the card\n");
-            break;
-        case 0x20:
-            show_message("TransOutcome:   Please authenticate yourself to your device and try again\n");
-            break;
-        case 0x21:
-            show_message("TransOutcome:   Please look at your handset to obtain further instructions\n");
-            break;
-        case 0x22:
-            show_message("TransOutcome:   Terminated\n");
-            break;
-        default:
-            show_message("TransOutcome:   Invalid data\n");
-            break;
-    }
+    temp_byte.clear();
+    convertStringToHex(trans_outcome,temp_byte);
+    show_trans_outcome(cur_brand, temp_byte.at(0));
 
     //show  cvm
-    switch (trans_cvm)
+    temp_byte.clear();
+    convertStringToHex(trans_cvm, temp_byte);
+    switch (temp_byte.at(0))
     {
         case 0x00:
             show_message("CVM:  No CVM\n");
@@ -1825,12 +1737,13 @@ void XGD_HOST::deal_trans_result()
     show_message("\n");
 
     //send response to term
-    QByteArray send_data,temp_byte;
+    QByteArray send_data;
     QString temp_str;
 
     send_data.append(STX);
     send_data.append(TRANS_RESULT_SEND);
     temp_str.append("0003030100");
+    temp_byte.clear();
     convertStringToHex(temp_str,temp_byte);
     send_data.append(temp_byte);
 
@@ -1972,4 +1885,470 @@ void XGD_HOST::on_checkBox_TransType_stateChanged(int arg1)
     {
         TransTypePresentFlag = true;
     }
+}
+
+void XGD_HOST::deal_finance_confirm()
+{
+    QString disp_message;
+    QString cur_brand = ui->comboBox_Brand->currentText();
+    QString trans_result = tlv_map.find("03").value();
+    QByteArray temp_byte;
+
+    convertStringToHex(trans_result, temp_byte);
+    show_trans_result(cur_brand, temp_byte.at(0));
+
+    QMapIterator<QString, QString> it(tlv_map);
+    while (it.hasNext())
+    {
+        it.next();
+        if(it.key() == "DF31" || it.key() == "03" || it.key() == "DF30" || it.key() == "56" || it.key() == "9F6B")
+        {
+            continue;
+        }
+        else
+        {
+            disp_message.clear();
+            disp_message.append(it.key()+": "+it.value());
+            show_message(disp_message+"\n");
+        }
+        if(it.key() == "DF31")
+        {
+            disp_message.clear();
+            disp_message.append("Scripte Result: "+it.value());
+            show_message(disp_message+"\n");
+        }
+    }
+
+    if(cur_brand == "ExpressPay")
+    {
+        if(tlv_map.find("56")->isNull() != true)
+        {
+            disp_message.clear();
+            disp_message.append("Track 1 Data: "+tlv_map.find("56").value());
+            show_message(disp_message+"\n");
+        }
+        if(tlv_map.find("9F6B")->isNull() != true)
+        {
+            disp_message.clear();
+            disp_message.append("Track 2 Data: "+tlv_map.find("9F6B").value());
+            show_message(disp_message+"\n");
+        }
+    }
+    else if(cur_brand == "Discover")
+    {
+        if(tlv_map.find("DF30")->isNull() != true)
+        {
+            disp_message.clear();
+            disp_message.append("Data Storage Write Results: "+tlv_map.find("DF30").value());
+            show_message(disp_message+"\n");
+        }    }
+
+    show_message("\n");
+    show_message("\n");
+
+    QByteArray send_data;
+    QString temp_str;
+
+    send_data.append(STX);
+    send_data.append(FINANCE_CONFIRM_SEND);
+
+    temp_str.append("0003030100");
+    temp_byte.clear();
+    convertStringToHex(temp_str,temp_byte);
+    send_data.append(temp_byte);
+
+    int ret;
+    ret = m_serial.write(send_data);
+    qDebug()<<"act write serial:"<<ret;
+}
+
+void XGD_HOST::show_trans_result(QString cardBrand, quint8 trans_result)
+{
+    qDebug()<<"cur card brand:"<<cardBrand;
+    qDebug()<<"trans res:"<<trans_result;
+
+    if(cardBrand == "Discover")
+    {
+        switch (trans_result)
+        {
+            case 0x61:
+                show_message("TransResult:  Offline Approved\n");
+                break;
+            case 0x62:
+                show_message("TransResult:  Offline Declined\n");
+                break;
+            case 0x63:
+                show_message("TransResult:   Online Approved\n");
+                break;
+            case 0x64:
+                show_message("TransResult:   Online Declined\n");
+                break;
+            case 0x65:
+                show_message("TransResult:   Approved Please Sign\n");
+                break;
+            case 0x66:
+                show_message("TransResult:   Please use another Card\n");
+                break;
+            case 0x67:
+                show_message("TransResult:   Please enter PIN\n");
+                break;
+            case 0x68:
+                show_message("TransResult:   Please present card again\n");
+                break;
+            case 0x69:
+                show_message("TransResult:   Insert, Swipe the Card\n");
+                break;
+            case 0x6A:
+                show_message("TransResult:   Insert, Swipe the Card\n");
+                break;
+            default:
+                show_message("TransResult:   Invalid data\n");
+                break;
+        }
+    }
+    else if(cardBrand == "EMV_PBOC")
+    {
+        switch (trans_result)
+        {
+            case 0x01:
+                show_message("交易结果:  交易批准\n");
+                break;
+            case 0x02:
+                show_message("交易结果:  交易拒绝\n");
+                break;
+            case 0x03:
+                show_message("交易结果:   交易终止\n");
+                break;
+            case 0x04:
+                show_message("交易结果:   交易终止，服务不支持\n");
+                break;
+            case 0x05:
+                show_message("交易结果:   交易强制批准\n");
+                break;
+            default:
+                show_message("TransResult:   Invalid data\n");
+                break;
+        }
+    }
+    else if(cardBrand == "qPBOC")
+    {
+        switch (trans_result)
+        {
+            case 0x11:
+                show_message("交易结果:  交易脱机批准\n");
+                break;
+            case 0x12:
+                show_message("交易结果:  交易脱机拒绝\n");
+                break;
+            case 0x13:
+                show_message("交易结果:   交易终止\n");
+                break;
+            case 0x14:
+                show_message("交易结果:   交易联机批准\n");
+                break;
+            case 0x15:
+                show_message("交易结果:   交易联机拒绝\n");
+                break;
+            case 0x16:
+                show_message("交易结果:   交易联机不成功，脱机拒绝\n");
+                break;
+            case 0x17:
+                show_message("交易结果:   交易拒绝，并显示黑名单卡\n");
+                break;
+            case 0x18:
+                show_message("交易结果:   交易联机，并显示卡片过有效期\n");
+                break;
+            case 0x19:
+                show_message("交易结果:   交易拒绝，并显示卡片过有效期\n");
+                break;
+            default:
+                show_message("TransResult:   Invalid data\n");
+                break;
+        }
+    }
+    else if(cardBrand == "ExpressPay")
+    {
+        switch (trans_result)
+        {
+            case 0x41:
+                show_message("TransResult:  Transaction approved\n");
+                break;
+            case 0x42:
+                show_message("TransResult:  Transaction approved with Cardholder signature\n");
+                break;
+            case 0x43:
+                show_message("TransResult:   Transaction declined\n");
+                break;
+            case 0x44:
+                show_message("TransResult:   Try Another Interface\n");
+                break;
+            case 0x45:
+                show_message("TransResult:   Premature termination or Request another payment\n");
+                break;
+            default:
+                show_message("TransResult:   Invalid data\n");
+                break;
+        }
+    }
+}
+
+void XGD_HOST::show_trans_outcome(QString cardBrand, quint8 trans_outcome)
+{
+    qDebug()<<"cur card brand:"<<cardBrand;
+    qDebug()<<"trans res:"<<trans_outcome;
+
+    if(cardBrand == "Discover")
+    {
+        switch (trans_outcome)
+        {
+            case 0x01:
+                show_message("TransOutcome:  Card not accepted\n");
+                break;
+            case 0x02:
+                show_message("TransOutcome:  Please present only one card\n");
+                break;
+            case 0x03:
+                show_message("TransOutcome:  Offline Approved\n");
+                break;
+            case 0x04:
+                show_message("TransOutcome:  Offline Declined\n");
+                break;
+            case 0x05:
+                show_message("TransOutcome:  Online Approved\n");
+                break;
+            case 0x06:
+                show_message("TransOutcome:  Online Declined\n");
+                break;
+            case 0x1A:
+                show_message("TransOutcome:  Approved Please Sign\n");
+                break;
+            case 0x1B:
+                show_message("TransOutcome:  Please enter PIN\n");
+                break;
+            case 0x1C:
+                show_message("TransOutcome:  Insert, Swipe the Card\n");
+                break;
+            case 0x1D:
+                show_message("TransOutcome:   Please use another Card\n");
+                break;
+            case 0x1E:
+                show_message("TransOutcome:   Please present card again\n");
+                break;
+            case 0x1F:
+                show_message("TransOutcome:   Please present the card\n");
+                break;
+            case 0x20:
+                show_message("TransOutcome:   Please authenticate yourself to your device and try again\n");
+                break;
+            case 0x21:
+                show_message("TransOutcome:   Please look at your handset to obtain further instructions\n");
+                break;
+            case 0x22:
+                show_message("TransOutcome:   Terminated\n");
+                break;
+            default:
+                show_message("TransOutcome:   Invalid data\n");
+                break;
+        }
+    }
+    else if(cardBrand == "ExpressPay")
+    {
+        switch (trans_outcome)
+        {
+            case 0x03:
+                show_message("TransOutcome:  Approved\n");
+                break;
+            case 0x1A:
+                show_message("TransOutcome:  Approved Please Sign\n");
+                break;
+            case 0x07:
+                show_message("TransOutcome:  Not Authorized\n");
+                break;
+            case 0x1D:
+                show_message("TransOutcome:  Please Insert Card\n");
+                break;
+            case 0x0F:
+                show_message("TransOutcome:  Processing Error\n");
+                break;
+            case 0x1C:
+                show_message("TransOutcome:  Insert, Swipe or Try Another Card\n");
+                break;
+            default:
+                show_message("TransOutcome:   Invalid data\n");
+                break;
+        }
+    }
+}
+
+void XGD_HOST::deal_authorize_request()
+{
+    QString disp_message;
+    QString cur_brand = ui->comboBox_Brand->currentText();
+
+    QMapIterator<QString, QString> it(tlv_map);
+    while (it.hasNext())
+    {
+        it.next();
+        if(it.key() == "99" || it.key() == "56" || it.key() == "9F6B")
+        {
+            continue;
+        }
+        else
+        {
+            disp_message.clear();
+            disp_message.append(it.key()+": "+it.value());
+            show_message(disp_message+"\n");
+        }
+        if(it.key() == "99")
+        {
+            disp_message.clear();
+            disp_message.append("Online Encrypted PIN: "+it.value());
+            show_message(disp_message+"\n");
+        }
+    }
+
+    if(cur_brand == "ExpressPay")
+    {
+        if(tlv_map.find("56")->isNull() != true)
+        {
+            disp_message.clear();
+            disp_message.append("Track 1 Data: "+tlv_map.find("56").value());
+            show_message(disp_message+"\n");
+        }
+        if(tlv_map.find("9F6B")->isNull() != true)
+        {
+            disp_message.clear();
+            disp_message.append("Track 2 Data: "+tlv_map.find("9F6B").value());
+            show_message(disp_message+"\n");
+        }
+    }
+
+    show_message("\n");
+    show_message("\n");
+
+    //send response to term
+    QByteArray send_data,temp_byte;
+    QString temp_str;
+    int send_data_len = 0;
+    char high,low;
+
+    send_data.append(STX);
+    send_data.append(AUTHORIZE_REQ_SEND);
+
+    send_data.append(0x8A);
+    send_data_len += 1;
+    temp_str = ui->lineEdit_HostResCode->text();
+    qDebug()<<"8A from host:"<<temp_str;
+    send_data.append(0x02);
+    send_data_len += 1;
+    send_data.append(temp_str.toLatin1());
+    send_data_len += 2;
+
+    temp_str = ui->lineEdit_HostAuthData->text();
+    if(temp_str.isEmpty() == false)
+    {
+        send_data.append(0x91);
+        send_data +=1 ;
+        temp_byte.clear();
+        convertStringToHex(temp_str, temp_byte);
+        send_data.append(temp_byte.size());
+        send_data += 1;
+        send_data.append(temp_byte);
+        send_data_len += temp_byte.size();
+    }
+
+    temp_str = ui->lineEdit_IssuerScript->text();
+    if(temp_str.isEmpty() == false)
+    {
+        temp_byte.clear();
+        convertStringToHex(temp_str, temp_byte);
+        send_data.append(temp_byte);
+        send_data_len += temp_byte.size();
+    }
+
+    high = (send_data_len>>8) & 0xFF;
+    low = (send_data_len) & 0xFF;
+    send_data.insert(2, high);
+    send_data.insert(3,low);
+
+    TraceHexFromByteArray("send data:", send_data);
+
+    int ret;
+    ret = m_serial.write(send_data);
+    qDebug()<<"act write byte: "<<ret;
+}
+
+void XGD_HOST::deal_batch_upload()
+{
+    QString disp_message;
+    QString cur_brand = ui->comboBox_Brand->currentText();
+    QString trans_result = tlv_map.find("03").value();
+    QByteArray temp_byte;
+
+    convertStringToHex(trans_result, temp_byte);
+    show_trans_result(cur_brand, temp_byte.at(0));
+
+    QMapIterator<QString, QString> it(tlv_map);
+    while (it.hasNext())
+    {
+        it.next();
+        if(it.key() == "DF31" || it.key() == "03" || it.key() == "DF30" || it.key() == "56" || it.key() == "9F6B")
+        {
+            continue;
+        }
+        else
+        {
+            disp_message.clear();
+            disp_message.append(it.key()+": "+it.value());
+            show_message(disp_message+"\n");
+        }
+        if(it.key() == "DF31")
+        {
+            disp_message.clear();
+            disp_message.append("Scripte Result: "+it.value());
+            show_message(disp_message+"\n");
+        }
+    }
+
+    if(cur_brand == "ExpressPay")
+    {
+        if(tlv_map.find("56")->isNull() != true)
+        {
+            disp_message.clear();
+            disp_message.append("Track 1 Data: "+tlv_map.find("56").value());
+            show_message(disp_message+"\n");
+        }
+        if(tlv_map.find("9F6B")->isNull() != true)
+        {
+            disp_message.clear();
+            disp_message.append("Track 2 Data: "+tlv_map.find("9F6B").value());
+            show_message(disp_message+"\n");
+        }
+    }
+    else if(cur_brand == "Discover")
+    {
+        if(tlv_map.find("DF30")->isNull() != true)
+        {
+            disp_message.clear();
+            disp_message.append("Data Storage Write Results: "+tlv_map.find("DF30").value());
+            show_message(disp_message+"\n");
+        }    }
+
+    show_message("\n");
+    show_message("\n");
+
+    QByteArray send_data;
+    QString temp_str;
+
+    send_data.append(STX);
+    send_data.append(BATCH_UPLOAD_SEND);
+
+    temp_str.append("0003030100");
+    temp_byte.clear();
+    convertStringToHex(temp_str,temp_byte);
+    send_data.append(temp_byte);
+
+    int ret;
+    ret = m_serial.write(send_data);
+    qDebug()<<"act write serial:"<<ret;
 }

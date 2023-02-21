@@ -120,9 +120,9 @@ private:
     void deal_term_data(QByteArray term_data, MsgType msg_type);
     void deal_finance_request();
     void show_message(QString text);
-    void deal_authorize_request(QByteArray term_data);
-    void deal_finance_confirm(QByteArray term_data);
-    void deal_batch_upload(QByteArray term_data);
+    void deal_authorize_request();
+    void deal_finance_confirm();
+    void deal_batch_upload();
     void deal_advice(QByteArray term_data);
     void deal_redo(QByteArray term_data);
     void deal_failflow_upload(QByteArray term_data);
@@ -137,5 +137,8 @@ private:
     void deal_drl_download();
 //    void deal_config_download(QString config_type, MsgType msg_type);
     void deal_term_outcome(QByteArray term_data);
+    void show_trans_result(QString cardBrand, quint8 trans_result);
+    void show_trans_outcome(QString cardBrand, quint8 trans_outcome);
+
 };
 #endif // XGD_HOST_H
