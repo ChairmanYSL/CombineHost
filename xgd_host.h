@@ -75,9 +75,9 @@ public:
     QString select_file_name;
 //    QDomDocument xml_doc;
     QMap<QString, quint8> config_load_map;
-    bool AmtPresentFlag;
-    bool AmtOtherPresentFlag;
-    bool TransTypePresentFlag;
+    bool AmtPresentFlag=true;
+    bool AmtOtherPresentFlag=true;
+    bool TransTypePresentFlag=true;
 
 private slots:
     void on_pushButton_ScanSerial_clicked();

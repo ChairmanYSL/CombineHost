@@ -20,27 +20,37 @@ XGD_HOST::XGD_HOST(QWidget *parent)
 
     QDir dir;
     dir.setPath(cur_config_dir);
-    CardBrand = dir.entryList();
-    CardBrand.removeFirst();    //remove '.' and '..'
-    CardBrand.removeFirst();
+    if(dir.exists())
+    {
+        CardBrand = dir.entryList();
+        if(CardBrand.count() > 2)
+        {
+            CardBrand.removeFirst();    //remove '.' and '..'
+            CardBrand.removeFirst();
 
-    ui->comboBox_Brand->addItems(CardBrand);
-    cur_brand = CardBrand.at(0);
+            ui->comboBox_Brand->addItems(CardBrand);
+            cur_brand = CardBrand.at(0);
+        }
+    }
 
     //init AID config list
     dir.setPath(cur_config_dir+"/"+cur_brand+"/AID");
     QStringList file_list;
 
     file_list = dir.entryList();
-    file_list.removeFirst();
-    file_list.removeFirst();
-    for(int i = 0; i < file_list.count(); i++)
+    qDebug()<<"file list count"<<file_list.count();
+    if(file_list.count() > 2)
     {
-        QString temp = file_list.at(i).section(".",0,0).trimmed();
-        file_list.replace(i, temp);
+        file_list.removeFirst();
+        file_list.removeFirst();
+        for(int i = 0; i < file_list.count(); i++)
+        {
+            QString temp = file_list.at(i).section(".",0,0).trimmed();
+            file_list.replace(i, temp);
+        }
+        ui->comboBox_AID->clear();
+        ui->comboBox_AID->addItems(file_list);
     }
-    ui->comboBox_AID->clear();
-    ui->comboBox_AID->addItems(file_list);
 
     //init CAPK config list
     dir.setPath(cur_config_dir+"/"+cur_brand+"/CAPK");
@@ -1417,76 +1427,151 @@ void XGD_HOST::deal_trans_request()
     send_data.append(STX);
     send_data.append(TRANS_REQ_SEND);
     //load 9F02
-//    if()
-    temp_str.append("9F0206");
-    convertStringToHex(temp_str, temp_byte);
-    send_data.append(temp_byte);
-    send_data_len += temp_byte.size();
-
-    temp_str.clear();
-    temp_str = ui->lineEdit_Amt->text();
-    qDebug()<<"get amt from widget:"<<temp_str;
-    temp_str.remove('.');
-    qDebug()<<"after remove .:"<<temp_str;
-    qDebug()<<"after remove size:"<<temp_str.size();
-    if(temp_str.size() < 12) //补高位的0
+    if(AmtPresentFlag)
     {
-        temp_len = temp_str.size();
-        for(int i = 0; i < 12-temp_len; i++)
+        temp_str.clear();
+        temp_str.append("9F02");
+        temp_byte.clear();
+        convertStringToHex(temp_str, temp_byte);
+        send_data.append(temp_byte);
+        send_data_len += temp_byte.size();
+        qDebug()<<"LINE:  "<<__LINE__<<"send data len: "<<send_data_len<<endl;
+
+        temp_str.clear();
+        temp_str = ui->lineEdit_Amt->text();
+        qDebug()<<"9F02 Empty:"<<temp_str.isEmpty();
+        if(temp_str.isEmpty() != true)
         {
-            temp_str.insert(0, '0');
-            qDebug()<<"after insert 0 :"<<temp_str;
+            send_data.append(0x06);
+            send_data_len += 1;
+            qDebug()<<"LINE:  "<<__LINE__<<"send data len: "<<send_data_len<<endl;
+            qDebug()<<"get amt from widget:"<<temp_str;
+
+            temp_str.remove('.');
+            if(temp_str.size() < 12) //补高位的0
+            {
+                temp_len = temp_str.size();
+                for(int i = 0; i < 12-temp_len; i++)
+                {
+                    temp_str.insert(0, '0');
+                }
+            }
+            qDebug()<<"cur amount: "<<temp_str;
+            show_message("9F02: "+temp_str+"\n");
+            temp_byte.clear();
+            convertStringToHex(temp_str, temp_byte);
+            TraceHexFromByteArray("9F02 in hex", temp_byte);
+
+            send_data.append(temp_byte);
+            TraceHexFromByteArray("after append 9F02", send_data);
+            send_data_len += temp_byte.size();
+            qDebug()<<"LINE:  "<<__LINE__<<"send data len: "<<send_data_len<<endl;
+        }
+        else
+        {
+            TraceHexFromByteArray("cur send data:", send_data);
+
+            temp_str.clear();
+            temp_str.append("00");
+            temp_byte.clear();
+            show_message("9F02: 0\n");
+            convertStringToHex(temp_str,temp_byte);
+
+            TraceHexFromByteArray("temp_byte:", temp_byte);
+            send_data.append(temp_byte);
+            send_data_len += temp_byte.size();
+            qDebug()<<"LINE:  "<<__LINE__<<"send data len: "<<send_data_len<<endl;
         }
     }
-    qDebug()<<"cur amount: "<<temp_str;
-    temp_byte.clear();
-    show_message("9F02: "+temp_str);
-    convertStringToHex(temp_str, temp_byte);
-    send_data.append(temp_byte);
-    send_data_len += temp_byte.size();
 
     //load 9F03
-    temp_str.clear();
-    temp_str.append("9F0306");
-    convertStringToHex(temp_str, temp_byte);
-    send_data.append(temp_byte);
-    send_data_len += temp_byte.size();
-
-    temp_str.clear();
-    temp_str = ui->lineEdit_AmtOther->text();
-    qDebug()<<"get amt other from widget:"<<temp_str;
-    temp_str.remove('.');
-    qDebug()<<"after remove .:"<<temp_str;
-    if(temp_str.size() < 12) //补高位的0
+    if(AmtOtherPresentFlag)
     {
-        temp_len = temp_str.size();
-        for(int i = 0; i < 12 - temp_len;i++)
+        temp_str.clear();
+        temp_str.append("9F03");
+        temp_byte.clear();
+        convertStringToHex(temp_str, temp_byte);
+        send_data.append(temp_byte);
+        send_data_len += temp_byte.size();
+        qDebug()<<"LINE:  "<<__LINE__<<"send data len: "<<send_data_len<<endl;
+
+        temp_str.clear();
+        temp_str = ui->lineEdit_AmtOther->text();
+        qDebug()<<"9F03 Empty:"<<temp_str.isEmpty();
+        if(temp_str.isEmpty() != true)
         {
-            temp_str.insert(0, '0');
+            send_data.append(0x06);
+            send_data_len += 1;
+            qDebug()<<"LINE:  "<<__LINE__<<"send data len: "<<send_data_len<<endl;
+
+            qDebug()<<"get amt other from widget:"<<temp_str;
+
+            temp_str.remove('.');
+            if(temp_str.size() < 12) //补高位的0
+            {
+                temp_len = temp_str.size();
+                for(int i = 0; i < 12-temp_len; i++)
+                {
+                    temp_str.insert(0, '0');
+                }
+            }
+            qDebug()<<"cur amount other: "<<temp_str;
+            show_message("9F03: "+temp_str+"\n");
+            temp_byte.clear();
+            convertStringToHex(temp_str, temp_byte);
+            TraceHexFromByteArray("9F03 in hex", temp_byte);
+
+            send_data.append(temp_byte);
+            TraceHexFromByteArray("after append 9F03", send_data);
+
+            send_data_len += temp_byte.size();
+            qDebug()<<"LINE:  "<<__LINE__<<"send data len: "<<send_data_len<<endl;
+        }
+        else
+        {
+            temp_str.clear();
+            temp_str.append("00");
+            temp_byte.clear();
+            show_message("9F03: 0\n");
+            convertStringToHex(temp_str,temp_byte);
+            send_data.append(temp_byte);
+            send_data_len += temp_byte.size();
         }
     }
-    qDebug()<<"cur amount other: "<<temp_str;
-    temp_byte.clear();
-    show_message("9F03: "+temp_str);
-    convertStringToHex(temp_str, temp_byte);
-    send_data.append(temp_byte);
-    send_data_len += temp_byte.size();
 
     //load 9C
-    temp_str.clear();
-    temp_str.append("9C01");
-    convertStringToHex(temp_str, temp_byte);
-    send_data.append(temp_byte);
-    send_data_len += temp_byte.size();
+    if(TransTypePresentFlag)
+    {
+        temp_str.clear();
+        temp_str.append("9C");
+        temp_byte.clear();
+        convertStringToHex(temp_str, temp_byte);
+        send_data.append(temp_byte);
+        send_data_len += temp_byte.size();
 
-    temp_str.clear();
-    temp_str = ui->lineEdit_TransType->text();
-    qDebug()<<"trans type: "<<temp_str;
-    temp_byte.clear();
-    show_message("9C: "+temp_str);
-    convertStringToHex(temp_str, temp_byte);
-    send_data.append(temp_byte);
-    send_data_len += temp_byte.size();
+        temp_str = ui->lineEdit_TransType->text();
+        if(temp_str.isEmpty() != true)
+        {
+            send_data.append(0x01);
+            send_data_len += 1;
+            qDebug()<<"get trans type from widget:"<<temp_str;
+            show_message("9C: "+temp_str+"\n");
+            temp_byte.clear();
+            convertStringToHex(temp_str, temp_byte);
+            send_data.append(temp_byte);
+            send_data_len += temp_byte.size();
+        }
+        else
+        {
+            temp_str.clear();
+            temp_str.append("00");
+            temp_byte.clear();
+            show_message("9C: 0\n");
+            convertStringToHex(temp_str,temp_byte);
+            send_data.append(temp_byte);
+            send_data_len += temp_byte.size();
+        }
+    }
 
     high = (send_data_len>>8) & 0xFF;
     low = (send_data_len) & 0xFF;
@@ -1494,7 +1579,7 @@ void XGD_HOST::deal_trans_request()
     send_data.insert(3,low);
 
     qDebug()<<"send data size:"<<send_data.size();
-    qDebug()<<"send data:"<<send_data;
+    TraceHexFromByteArray("send data", send_data);
 
     show_message("\n");
     show_message("\n");

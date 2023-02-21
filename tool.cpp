@@ -89,6 +89,14 @@ char convertHexToChar(char hex)
     }
 }
 
+void Hex2String(QString &str, const QByteArray &byteData)
+{
+    foreach(int hex, byteData)
+    {
+        str += QString::number(hex, 16).toUpper();
+    }
+}
+
 
 void TraceHexFromByteArray(const char *title, QByteArray src)
 {
