@@ -116,6 +116,7 @@ private:
     QByteArray download_counter;
 
 //    void init_tlv_map();
+    void init_config_dir();
     void deal_term_data(QByteArray term_data, MsgType msg_type);
     void deal_finance_request();
     void show_message(QString text);

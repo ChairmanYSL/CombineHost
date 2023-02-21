@@ -14,127 +14,7 @@ XGD_HOST::XGD_HOST(QWidget *parent)
     ui->comboBox_BaudRate->setCurrentIndex(9);
 
     //init display brand list
-    //TODO: here to add init config list and brand list,take cmd command to get dir name and show
-    QStringList CardBrand;
-    cur_config_dir = QCoreApplication::applicationDirPath() + "/Config";
-
-    QDir dir;
-    dir.setPath(cur_config_dir);
-    if(dir.exists())
-    {
-        CardBrand = dir.entryList();
-        if(CardBrand.count() > 2)
-        {
-            CardBrand.removeFirst();    //remove '.' and '..'
-            CardBrand.removeFirst();
-
-            ui->comboBox_Brand->addItems(CardBrand);
-            cur_brand = CardBrand.at(0);
-        }
-    }
-
-    //init AID config list
-    dir.setPath(cur_config_dir+"/"+cur_brand+"/AID");
-    QStringList file_list;
-
-    file_list = dir.entryList();
-    qDebug()<<"file list count"<<file_list.count();
-    if(file_list.count() > 2)
-    {
-        file_list.removeFirst();
-        file_list.removeFirst();
-        for(int i = 0; i < file_list.count(); i++)
-        {
-            QString temp = file_list.at(i).section(".",0,0).trimmed();
-            file_list.replace(i, temp);
-        }
-        ui->comboBox_AID->clear();
-        ui->comboBox_AID->addItems(file_list);
-    }
-
-    //init CAPK config list
-    dir.setPath(cur_config_dir+"/"+cur_brand+"/CAPK");
-
-    file_list = dir.entryList();
-    file_list.removeFirst();
-    file_list.removeFirst();
-    for(int i = 0; i < file_list.count(); i++)
-    {
-        QString temp = file_list.at(i).section(".",0,0).trimmed();
-        file_list.replace(i, temp);
-    }
-    ui->comboBox_CAPK->clear();
-    ui->comboBox_CAPK->addItems(file_list);
-
-
-    //init Exception File config list
-    dir.setPath(cur_config_dir+"/"+cur_brand+"/Exception_File");
-
-    file_list = dir.entryList();
-    file_list.removeFirst();
-    file_list.removeFirst();
-    for(int i = 0; i < file_list.count(); i++)
-    {
-        QString temp = file_list.at(i).section(".",0,0).trimmed();
-        file_list.replace(i, temp);
-    }
-    ui->comboBox_ExceptionFile->clear();
-    ui->comboBox_ExceptionFile->addItems(file_list);
-
-    //init PreProcess config list
-    dir.setPath(cur_config_dir+"/"+cur_brand+"/PreProcess");
-
-    file_list = dir.entryList();
-    file_list.removeFirst();
-    file_list.removeFirst();
-    for(int i = 0; i < file_list.count(); i++)
-    {
-        QString temp = file_list.at(i).section(".",0,0).trimmed();
-        file_list.replace(i, temp);
-    }
-    ui->comboBox_PreProcess->clear();
-    ui->comboBox_PreProcess->addItems(file_list);
-
-    //init Revocation_CAPK config list
-    dir.setPath(cur_config_dir+"/"+cur_brand+"/Revocation_CAPK");
-    file_list = dir.entryList();
-    file_list.removeFirst();
-    file_list.removeFirst();
-    for(int i = 0; i < file_list.count(); i++)
-    {
-        QString temp = file_list.at(i).section(".",0,0).trimmed();
-        file_list.replace(i, temp);
-    }
-    ui->comboBox_Revokey->clear();
-    ui->comboBox_Revokey->addItems(file_list);
-
-    //init SimData config list
-    dir.setPath(cur_config_dir+"/"+cur_brand+"/SimData");
-
-    file_list = dir.entryList();
-    file_list.removeFirst();
-    file_list.removeFirst();
-    for(int i = 0; i < file_list.count(); i++)
-    {
-        QString temp = file_list.at(i).section(".",0,0).trimmed();
-        file_list.replace(i, temp);
-    }
-    ui->comboBox_SimData->clear();
-    ui->comboBox_SimData->addItems(file_list);
-
-    //init DRL config list
-    dir.setPath(cur_config_dir+"/"+cur_brand+"/DRL");
-
-    file_list = dir.entryList();
-    file_list.removeFirst();
-    file_list.removeFirst();
-    for(int i = 0; i < file_list.count(); i++)
-    {
-        QString temp = file_list.at(i).section(".",0,0).trimmed();
-        file_list.replace(i, temp);
-    }
-    ui->comboBox_DRL->clear();
-    ui->comboBox_DRL->addItems(file_list);
+    init_config_dir();
 
     //init config download counter map
     config_load_map.insert("AID_Counter", 0);
@@ -182,6 +62,175 @@ XGD_HOST::~XGD_HOST()
 {
     m_serial.close();
     delete ui;
+}
+
+void XGD_HOST::init_config_dir()
+{
+    QStringList CardBrand;
+    cur_config_dir = QCoreApplication::applicationDirPath() + "/Config";
+    QDir dir;
+    QStringList file_list;
+
+    //init card brand
+    dir.setPath(cur_config_dir);
+    qDebug()<<"config dir exist:"<<dir.exists();
+    if(dir.exists())
+    {
+        CardBrand = dir.entryList();
+        qDebug()<<"CardBrand.count: "<<CardBrand.count();
+        if(CardBrand.count() > 2)
+        {
+            CardBrand.removeFirst();    //remove '.' and '..'
+            CardBrand.removeFirst();
+
+            ui->comboBox_Brand->addItems(CardBrand);
+            cur_brand = CardBrand.at(0);
+        }
+    }
+
+    if(cur_brand.isEmpty() == false)
+    {
+        //init AID config list
+        ui->comboBox_AID->clear();
+        dir.setPath(cur_config_dir+"/"+cur_brand+"/AID");
+        qDebug()<<"aid dir exist:"<<dir.exists();
+        if(dir.exists())
+        {
+            file_list = dir.entryList();
+            qDebug()<<"file list count"<<file_list.count();
+            if(file_list.count() > 2)
+            {
+                file_list.removeFirst();
+                file_list.removeFirst();
+                for(int i = 0; i < file_list.count(); i++)
+                {
+                    QString temp = file_list.at(i).section(".",0,0).trimmed();
+                    file_list.replace(i, temp);
+                }
+                ui->comboBox_AID->addItems(file_list);
+            }
+        }
+        //init CAPK config list
+        ui->comboBox_CAPK->clear();
+        dir.setPath(cur_config_dir+"/"+cur_brand+"/CAPK");
+        qDebug()<<"capk dir exist:"<<dir.exists();
+        if(dir.exists())
+        {
+            file_list = dir.entryList();
+            qDebug()<<"file list count"<<file_list.count();
+            if(file_list.count() > 2)
+            {
+                file_list.removeFirst();
+                file_list.removeFirst();
+                for(int i = 0; i < file_list.count(); i++)
+                {
+                    QString temp = file_list.at(i).section(".",0,0).trimmed();
+                    file_list.replace(i, temp);
+                }
+                ui->comboBox_CAPK->addItems(file_list);
+            }
+        }
+        //init Exception File config list
+        ui->comboBox_ExceptionFile->clear();
+        dir.setPath(cur_config_dir+"/"+cur_brand+"/Exception_File");
+        qDebug()<<"exception file dir exist:"<<dir.exists();
+        if(dir.exists())
+        {
+            file_list = dir.entryList();
+            qDebug()<<"file list count"<<file_list.count();
+            if(file_list.count() > 2)
+            {
+                file_list.removeFirst();
+                file_list.removeFirst();
+                for(int i = 0; i < file_list.count(); i++)
+                {
+                    QString temp = file_list.at(i).section(".",0,0).trimmed();
+                    file_list.replace(i, temp);
+                }
+                ui->comboBox_ExceptionFile->addItems(file_list);
+            }
+        }
+        //init PreProcess config list
+        ui->comboBox_PreProcess->clear();
+        dir.setPath(cur_config_dir+"/"+cur_brand+"/PreProcess");
+        qDebug()<<"preprocess dir exist:"<<dir.exists();
+        if(dir.exists())
+        {
+            file_list = dir.entryList();
+            qDebug()<<"file list count"<<file_list.count();
+            if(file_list.count() > 2)
+            {
+                file_list.removeFirst();
+                file_list.removeFirst();
+                for(int i = 0; i < file_list.count(); i++)
+                {
+                    QString temp = file_list.at(i).section(".",0,0).trimmed();
+                    file_list.replace(i, temp);
+                }
+                ui->comboBox_PreProcess->addItems(file_list);
+            }
+        }
+        //init Revocation_CAPK config list
+        ui->comboBox_Revokey->clear();
+        dir.setPath(cur_config_dir+"/"+cur_brand+"/Revocation_CAPK");
+        qDebug()<<"revocation cert dir exist:"<<dir.exists();
+        if(dir.exists())
+        {
+            file_list = dir.entryList();
+            qDebug()<<"file list count"<<file_list.count();
+            if(file_list.count() > 2)
+            {
+                file_list.removeFirst();
+                file_list.removeFirst();
+                for(int i = 0; i < file_list.count(); i++)
+                {
+                    QString temp = file_list.at(i).section(".",0,0).trimmed();
+                    file_list.replace(i, temp);
+                }
+                ui->comboBox_Revokey->addItems(file_list);
+            }
+        }
+        //init SimData config list
+        ui->comboBox_SimData->clear();
+        dir.setPath(cur_config_dir+"/"+cur_brand+"/SimData");
+        qDebug()<<"simdata dir exist:"<<dir.exists();
+        if(dir.exists())
+        {
+            file_list = dir.entryList();
+            qDebug()<<"file list count"<<file_list.count();
+            if(file_list.count() > 2)
+            {
+                file_list.removeFirst();
+                file_list.removeFirst();
+                for(int i = 0; i < file_list.count(); i++)
+                {
+                    QString temp = file_list.at(i).section(".",0,0).trimmed();
+                    file_list.replace(i, temp);
+                }
+                ui->comboBox_SimData->addItems(file_list);
+            }
+        }
+        //init DRL config list
+        ui->comboBox_DRL->clear();
+        dir.setPath(cur_config_dir+"/"+cur_brand+"/DRL");
+        qDebug()<<"simdata dir exist:"<<dir.exists();
+        if(dir.exists())
+        {
+            file_list = dir.entryList();
+            qDebug()<<"file list count"<<file_list.count();
+            if(file_list.count() > 2)
+            {
+                file_list.removeFirst();
+                file_list.removeFirst();
+                for(int i = 0; i < file_list.count(); i++)
+                {
+                    QString temp = file_list.at(i).section(".",0,0).trimmed();
+                    file_list.replace(i, temp);
+                }
+                ui->comboBox_DRL->addItems(file_list);
+            }
+        }
+    }
 }
 
 void XGD_HOST::on_pushButton_ScanSerial_clicked()
@@ -1112,100 +1161,141 @@ void XGD_HOST::deal_aid_download()
 void XGD_HOST::on_comboBox_Brand_currentTextChanged(const QString &arg1)
 {
     cur_brand = arg1;
-
     QDir dir;
-    dir.setPath(cur_config_dir);
+    QStringList file_list;
 
     //flush AID config list
-    dir.setPath(cur_config_dir+"/"+cur_brand+"/AID");
-    QStringList file_list = dir.entryList();
-    file_list.removeFirst();
-    file_list.removeFirst();
-    for(int i = 0; i < file_list.count(); i++)
-    {
-        QString temp = file_list.at(i).section(".",0,0).trimmed();
-        file_list.replace(i, temp);
-    }
     ui->comboBox_AID->clear();
-    ui->comboBox_AID->addItems(file_list);
+    dir.setPath(cur_config_dir+"/"+cur_brand+"/AID");
+    if(dir.exists())
+    {
+        file_list = dir.entryList();
+        if(file_list.count() > 2)
+        {
+            file_list.removeFirst();
+            file_list.removeFirst();
+            for(int i = 0; i < file_list.count(); i++)
+            {
+                QString temp = file_list.at(i).section(".",0,0).trimmed();
+                file_list.replace(i, temp);
+            }
+            ui->comboBox_AID->addItems(file_list);
+        }
+    }
 
     //flush CAPK config list
-    dir.setPath(cur_config_dir+"/"+cur_brand+"/CAPK");
-    file_list = dir.entryList();
-    file_list.removeFirst();
-    file_list.removeFirst();
-    for(int i = 0; i < file_list.count(); i++)
-    {
-        QString temp = file_list.at(i).section(".",0,0).trimmed();
-        file_list.replace(i, temp);
-    }
     ui->comboBox_CAPK->clear();
-    ui->comboBox_CAPK->addItems(file_list);
+    dir.setPath(cur_config_dir+"/"+cur_brand+"/CAPK");
+    if(dir.exists())
+    {
+        file_list = dir.entryList();
+        if(file_list.count() > 2)
+        {
+            file_list.removeFirst();
+            file_list.removeFirst();
+            for(int i = 0; i < file_list.count(); i++)
+            {
+                QString temp = file_list.at(i).section(".",0,0).trimmed();
+                file_list.replace(i, temp);
+            }
+            ui->comboBox_CAPK->addItems(file_list);
+        }
+    }
 
     //flush Exception File config list
-    dir.setPath(cur_config_dir+"/"+cur_brand+"/Exception_File");
-    file_list = dir.entryList();
-    file_list.removeFirst();
-    file_list.removeFirst();
-    for(int i = 0; i < file_list.count(); i++)
-    {
-        QString temp = file_list.at(i).section(".",0,0).trimmed();
-        file_list.replace(i, temp);
-    }
     ui->comboBox_ExceptionFile->clear();
-    ui->comboBox_ExceptionFile->addItems(file_list);
+    dir.setPath(cur_config_dir+"/"+cur_brand+"/Exception_File");
+    if(dir.exists())
+    {
+        file_list = dir.entryList();
+        if(file_list.count() > 2)
+        {
+            file_list.removeFirst();
+            file_list.removeFirst();
+            for(int i = 0; i < file_list.count(); i++)
+            {
+                QString temp = file_list.at(i).section(".",0,0).trimmed();
+                file_list.replace(i, temp);
+            }
+            ui->comboBox_ExceptionFile->addItems(file_list);
+        }
+    }
 
     //flush DRL config list
-    dir.setPath(cur_config_dir+"/"+cur_brand+"/DRL");
-    file_list = dir.entryList();
-    file_list.removeFirst();
-    file_list.removeFirst();
-    for(int i = 0; i < file_list.count(); i++)
-    {
-        QString temp = file_list.at(i).section(".",0,0).trimmed();
-        file_list.replace(i, temp);
-    }
     ui->comboBox_DRL->clear();
-    ui->comboBox_DRL->addItems(file_list);
+    dir.setPath(cur_config_dir+"/"+cur_brand+"/DRL");
+    if(dir.exists())
+    {
+        file_list = dir.entryList();
+        if(file_list.count() > 2)
+        {
+            file_list.removeFirst();
+            file_list.removeFirst();
+            for(int i = 0; i < file_list.count(); i++)
+            {
+                QString temp = file_list.at(i).section(".",0,0).trimmed();
+                file_list.replace(i, temp);
+            }
+            ui->comboBox_DRL->addItems(file_list);
+        }
+    }
 
     //flush SimData config list
-    dir.setPath(cur_config_dir+"/"+cur_brand+"/SimData");
-    file_list = dir.entryList();
-    file_list.removeFirst();
-    file_list.removeFirst();
-    for(int i = 0; i < file_list.count(); i++)
-    {
-        QString temp = file_list.at(i).section(".",0,0).trimmed();
-        file_list.replace(i, temp);
-    }
     ui->comboBox_SimData->clear();
-    ui->comboBox_SimData->addItems(file_list);
+    dir.setPath(cur_config_dir+"/"+cur_brand+"/SimData");
+    if(dir.exists())
+    {
+            file_list = dir.entryList();
+            if(file_list.count() > 2)
+            {
+                file_list.removeFirst();
+                file_list.removeFirst();
+                for(int i = 0; i < file_list.count(); i++)
+                {
+                    QString temp = file_list.at(i).section(".",0,0).trimmed();
+                    file_list.replace(i, temp);
+                }
+                ui->comboBox_SimData->addItems(file_list);
+            }
+    }
 
     //flush Revokey config list
-    dir.setPath(cur_config_dir+"/"+cur_brand+"/Revocation_CAPK");
-    file_list = dir.entryList();
-    file_list.removeFirst();
-    file_list.removeFirst();
-    for(int i = 0; i < file_list.count(); i++)
-    {
-        QString temp = file_list.at(i).section(".",0,0).trimmed();
-        file_list.replace(i, temp);
-    }
     ui->comboBox_Revokey->clear();
-    ui->comboBox_Revokey->addItems(file_list);
+    dir.setPath(cur_config_dir+"/"+cur_brand+"/Revocation_CAPK");
+    if(dir.exists())
+    {
+        file_list = dir.entryList();
+        if(file_list.count() > 2)
+        {
+            file_list.removeFirst();
+            file_list.removeFirst();
+            for(int i = 0; i < file_list.count(); i++)
+            {
+                QString temp = file_list.at(i).section(".",0,0).trimmed();
+                file_list.replace(i, temp);
+            }
+            ui->comboBox_Revokey->addItems(file_list);
+        }
+    }
 
     //flush PreProcess config list
-    dir.setPath(cur_config_dir+"/"+cur_brand+"/PreProcess");
-    file_list = dir.entryList();
-    file_list.removeFirst();
-    file_list.removeFirst();
-    for(int i = 0; i < file_list.count(); i++)
-    {
-        QString temp = file_list.at(i).section(".",0,0).trimmed();
-        file_list.replace(i, temp);
-    }
     ui->comboBox_PreProcess->clear();
-    ui->comboBox_PreProcess->addItems(file_list);
+    dir.setPath(cur_config_dir+"/"+cur_brand+"/PreProcess");
+    if(dir.exists())
+    {
+        file_list = dir.entryList();
+        if(file_list.count() > 2)
+        {
+            file_list.removeFirst();
+            file_list.removeFirst();
+            for(int i = 0; i < file_list.count(); i++)
+            {
+                QString temp = file_list.at(i).section(".",0,0).trimmed();
+                file_list.replace(i, temp);
+            }
+            ui->comboBox_PreProcess->addItems(file_list);
+        }
+    }
 }
 
 void XGD_HOST::on_pushButton_DownloadAid_clicked()
