@@ -29,9 +29,25 @@ FORMS += \
 
 CONFIG += console
 
+# 版本信息
+VERSION = 0.0.0.1
+# 图标
+RC_ICONS = app.ico
+# 公司名称
+QMAKE_TARGET_COMPANY = "Shenzhen Xinguodu Technology Co., Ltd"
+# 产品名称
+QMAKE_TARGET_PRODUCT = "XGD_HOST"
+# 文件说明
+QMAKE_TARGET_DESCRIPTION = "EMV Test Host"
+# 版权信息
+QMAKE_TARGET_COPYRIGHT = "Powered by bruce lee. All rights reserved."
+# 中文（简体）
+RC_LANG = 0x0004
+
 #UI_DIR = ./UI
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+

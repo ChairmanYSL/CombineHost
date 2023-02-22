@@ -250,6 +250,7 @@ void XGD_HOST::on_pushButton_OpenSerial_clicked()
         QMessageBox::critical(this, "Error", "Open Serial Port Error!!!");
         return;
     }
+    show_message("open"+serialport_name+"Success!");
 
     cur_baud_rate = ui->comboBox_BaudRate->currentText();
     m_serial.setBaudRate(cur_baud_rate.toUInt());
@@ -451,14 +452,15 @@ void XGD_HOST::deal_term_data(QByteArray term_data, MsgType msg_type)
             show_message("Upload Fail-Flow Message:\n");
             break;
         case TRANS_RESULT_RECV:
-            deal_trans_result();
             show_message("Transaction Result Message:\n");
+            deal_trans_result();
             break;
         case ELECCHIP_ELECSIGN_RECV:
             show_message("Elctric Chip && Elctric Sign Message:\n");
             break;
         case TERM_OUTCOME_RECV:
             show_message("Terminal OutCome Message:\n");
+            deal_term_outcome();
             break;
         default:
             QMessageBox::critical(this, "Error", "Error protocol MsgType!!!");
@@ -2351,4 +2353,19 @@ void XGD_HOST::deal_batch_upload()
     int ret;
     ret = m_serial.write(send_data);
     qDebug()<<"act write serial:"<<ret;
+}
+
+void XGD_HOST::deal_term_outcome()
+{
+    QString UIReq = tlv_map.find("DF8116").value();
+    QByteArray temp_byte;
+
+    if(UIReq.isEmpty() == false)
+    {
+        show_message("UI Request on Outcome:");
+
+        QString MessageID = UIReq.at(0);
+        temp_byte.clear();
+        convertStringToHex(MessageID, temp_byte);
+    }
 }

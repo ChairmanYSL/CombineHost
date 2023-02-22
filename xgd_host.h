@@ -136,7 +136,7 @@ private:
     void deal_elecchip_elecsign(QByteArray term_data);
     void deal_drl_download();
 //    void deal_config_download(QString config_type, MsgType msg_type);
-    void deal_term_outcome(QByteArray term_data);
+    void deal_term_outcome();
     void show_trans_result(QString cardBrand, quint8 trans_result);
     void show_trans_outcome(QString cardBrand, quint8 trans_outcome);
 

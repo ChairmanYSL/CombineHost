@@ -19,7 +19,7 @@ CXXFLAGS      = -fno-keep-inline-dllexport -O2 -std=gnu++11 -Wall -Wextra -Wextr
 INCPATH       = -I. -I..\..\5.14.2\mingw73_32\include -I..\..\5.14.2\mingw73_32\include\QtWidgets -I..\..\5.14.2\mingw73_32\include\QtGui -I..\..\5.14.2\mingw73_32\include\QtANGLE -I..\..\5.14.2\mingw73_32\include\QtXml -I..\..\5.14.2\mingw73_32\include\QtSerialPort -I..\..\5.14.2\mingw73_32\include\QtCore -Irelease -I. -I..\..\5.14.2\mingw73_32\mkspecs\win32-g++ 
 LINKER      =        g++
 LFLAGS        =        -Wl,-s -Wl,-subsystem,console -mthreads
-LIBS        =        D:\Qt\Qt5.14.2\5.14.2\mingw73_32\lib\libQt5Widgets.a D:\Qt\Qt5.14.2\5.14.2\mingw73_32\lib\libQt5Gui.a D:\Qt\Qt5.14.2\5.14.2\mingw73_32\lib\libQt5Xml.a D:\Qt\Qt5.14.2\5.14.2\mingw73_32\lib\libQt5SerialPort.a D:\Qt\Qt5.14.2\5.14.2\mingw73_32\lib\libQt5Core.a   
+LIBS        =        D:\Qt\Qt5.14.2\5.14.2\mingw73_32\lib\libQt5Widgets.a D:\Qt\Qt5.14.2\5.14.2\mingw73_32\lib\libQt5Gui.a D:\Qt\Qt5.14.2\5.14.2\mingw73_32\lib\libQt5Xml.a D:\Qt\Qt5.14.2\5.14.2\mingw73_32\lib\libQt5SerialPort.a D:\Qt\Qt5.14.2\5.14.2\mingw73_32\lib\libQt5Core.a release\XGD_HOST_resource_res.o   
 QMAKE         = D:\Qt\Qt5.14.2\5.14.2\mingw73_32\bin\qmake.exe
 DEL_FILE      = del
 CHK_DIR_EXISTS= if not exist
@@ -40,7 +40,7 @@ IDC           = idc
 IDL           = midl
 ZIP           = zip -r -9
 DEF_FILE      = 
-RES_FILE      = 
+RES_FILE      = release\XGD_HOST_resource_res.o
 SED           = $(QMAKE) -install sed
 MOVE          = move
 
@@ -72,8 +72,11 @@ DESTDIR_TARGET = release\XGD_HOST.exe
 first: all
 all: Makefile.Release  release/XGD_HOST.exe
 
-release/XGD_HOST.exe: D:/Qt/Qt5.14.2/5.14.2/mingw73_32/lib/libQt5Widgets.a D:/Qt/Qt5.14.2/5.14.2/mingw73_32/lib/libQt5Gui.a D:/Qt/Qt5.14.2/5.14.2/mingw73_32/lib/libQt5Xml.a D:/Qt/Qt5.14.2/5.14.2/mingw73_32/lib/libQt5SerialPort.a D:/Qt/Qt5.14.2/5.14.2/mingw73_32/lib/libQt5Core.a ui_xgd_host.h $(OBJECTS) 
+release/XGD_HOST.exe: D:/Qt/Qt5.14.2/5.14.2/mingw73_32/lib/libQt5Widgets.a D:/Qt/Qt5.14.2/5.14.2/mingw73_32/lib/libQt5Gui.a D:/Qt/Qt5.14.2/5.14.2/mingw73_32/lib/libQt5Xml.a D:/Qt/Qt5.14.2/5.14.2/mingw73_32/lib/libQt5SerialPort.a D:/Qt/Qt5.14.2/5.14.2/mingw73_32/lib/libQt5Core.a ui_xgd_host.h $(OBJECTS) release/XGD_HOST_resource_res.o
 	$(LINKER) $(LFLAGS) -o $(DESTDIR_TARGET) $(OBJECTS)  $(LIBS)
+
+release/XGD_HOST_resource_res.o: XGD_HOST_resource.rc
+	windres -i XGD_HOST_resource.rc -o release\XGD_HOST_resource_res.o --include-dir=. $(DEFINES)
 
 qmake: FORCE
 	@$(QMAKE) -o Makefile.Release XGD_HOST.pro -spec win32-g++ "CONFIG+=qtquickcompiler"
@@ -85,6 +88,7 @@ dist:
 
 clean: compiler_clean 
 	-$(DEL_FILE) release\main.o release\tool.o release\xgd_host.o release\moc_xgd_host.o
+	-$(DEL_FILE) release\XGD_HOST_resource_res.o
 
 distclean: clean 
 	-$(DEL_FILE) .qmake.stash
