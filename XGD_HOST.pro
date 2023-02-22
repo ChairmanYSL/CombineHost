@@ -27,7 +27,7 @@ HEADERS += \
 FORMS += \
     xgd_host.ui
 
-CONFIG += console
+#CONFIG += console
 
 # 版本信息
 VERSION = 0.0.0.1
@@ -45,6 +45,7 @@ QMAKE_TARGET_COPYRIGHT = "Powered by bruce lee. All rights reserved."
 RC_LANG = 0x0004
 
 #UI_DIR = ./UI
+DEFINES += QT_MESSAGELOGCONTEXT
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

@@ -255,7 +255,6 @@ Makefile: XGD_HOST.pro ../../5.14.2/mingw73_32/mkspecs/win32-g++/qmake.conf ../.
 		../../5.14.2/mingw73_32/mkspecs/features/resolve_config.prf \
 		../../5.14.2/mingw73_32/mkspecs/features/exclusive_builds_post.prf \
 		../../5.14.2/mingw73_32/mkspecs/features/default_post.prf \
-		../../5.14.2/mingw73_32/mkspecs/features/win32/console.prf \
 		../../5.14.2/mingw73_32/mkspecs/features/resources_functions.prf \
 		../../5.14.2/mingw73_32/mkspecs/features/qtquickcompiler.prf \
 		../../5.14.2/mingw73_32/mkspecs/features/precompile_header.prf \
@@ -267,6 +266,7 @@ Makefile: XGD_HOST.pro ../../5.14.2/mingw73_32/mkspecs/win32-g++/qmake.conf ../.
 		../../5.14.2/mingw73_32/mkspecs/features/uic.prf \
 		../../5.14.2/mingw73_32/mkspecs/features/qmake_use.prf \
 		../../5.14.2/mingw73_32/mkspecs/features/file_copies.prf \
+		../../5.14.2/mingw73_32/mkspecs/features/win32/windows.prf \
 		../../5.14.2/mingw73_32/mkspecs/features/testcase_targets.prf \
 		../../5.14.2/mingw73_32/mkspecs/features/exceptions.prf \
 		../../5.14.2/mingw73_32/mkspecs/features/yacc.prf \
@@ -277,6 +277,7 @@ Makefile: XGD_HOST.pro ../../5.14.2/mingw73_32/mkspecs/win32-g++/qmake.conf ../.
 		../../5.14.2/mingw73_32/lib/Qt5Xml.prl \
 		../../5.14.2/mingw73_32/lib/Qt5SerialPort.prl \
 		../../5.14.2/mingw73_32/lib/Qt5Core.prl \
+		../../5.14.2/mingw73_32/lib/qtmain.prl \
 		../../5.14.2/mingw73_32/mkspecs/features/build_pass.prf
 	$(QMAKE) -o Makefile XGD_HOST.pro -spec win32-g++ "CONFIG+=qtquickcompiler"
 ../../5.14.2/mingw73_32/mkspecs/features/spec_pre.prf:
@@ -464,7 +465,6 @@ Makefile: XGD_HOST.pro ../../5.14.2/mingw73_32/mkspecs/win32-g++/qmake.conf ../.
 ../../5.14.2/mingw73_32/mkspecs/features/resolve_config.prf:
 ../../5.14.2/mingw73_32/mkspecs/features/exclusive_builds_post.prf:
 ../../5.14.2/mingw73_32/mkspecs/features/default_post.prf:
-../../5.14.2/mingw73_32/mkspecs/features/win32/console.prf:
 ../../5.14.2/mingw73_32/mkspecs/features/resources_functions.prf:
 ../../5.14.2/mingw73_32/mkspecs/features/qtquickcompiler.prf:
 ../../5.14.2/mingw73_32/mkspecs/features/precompile_header.prf:
@@ -476,6 +476,7 @@ Makefile: XGD_HOST.pro ../../5.14.2/mingw73_32/mkspecs/win32-g++/qmake.conf ../.
 ../../5.14.2/mingw73_32/mkspecs/features/uic.prf:
 ../../5.14.2/mingw73_32/mkspecs/features/qmake_use.prf:
 ../../5.14.2/mingw73_32/mkspecs/features/file_copies.prf:
+../../5.14.2/mingw73_32/mkspecs/features/win32/windows.prf:
 ../../5.14.2/mingw73_32/mkspecs/features/testcase_targets.prf:
 ../../5.14.2/mingw73_32/mkspecs/features/exceptions.prf:
 ../../5.14.2/mingw73_32/mkspecs/features/yacc.prf:
@@ -486,6 +487,7 @@ XGD_HOST.pro:
 ../../5.14.2/mingw73_32/lib/Qt5Xml.prl:
 ../../5.14.2/mingw73_32/lib/Qt5SerialPort.prl:
 ../../5.14.2/mingw73_32/lib/Qt5Core.prl:
+../../5.14.2/mingw73_32/lib/qtmain.prl:
 ../../5.14.2/mingw73_32/mkspecs/features/build_pass.prf:
 qmake: FORCE
 	@$(QMAKE) -o Makefile XGD_HOST.pro -spec win32-g++ "CONFIG+=qtquickcompiler"

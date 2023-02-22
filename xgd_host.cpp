@@ -251,7 +251,7 @@ void XGD_HOST::on_pushButton_OpenSerial_clicked()
         QMessageBox::critical(this, "Error", "Open Serial Port Error!!!");
         return;
     }
-    show_message("open"+serialport_name+"Success!");
+    show_message("open "+serialport_name+" Success!");
 
     cur_baud_rate = ui->comboBox_BaudRate->currentText();
     m_serial.setBaudRate(cur_baud_rate.toUInt());
@@ -410,7 +410,7 @@ void XGD_HOST::deal_term_data(QByteArray term_data, MsgType msg_type)
         case ADVICE_RECV:
             show_message("Advice Message:\n");
             deal_advice(term_data);
-            break;
+            return ;
 
         default:
             break;
