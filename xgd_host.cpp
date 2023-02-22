@@ -221,6 +221,7 @@ void XGD_HOST::init_config_dir()
 
 void XGD_HOST::on_pushButton_ScanSerial_clicked()
 {
+    ui->comboBox_SerialPort->clear();
     const auto infos = QSerialPortInfo::availablePorts();
     for(const QSerialPortInfo &info: infos)
     {
@@ -406,6 +407,11 @@ void XGD_HOST::deal_term_data(QByteArray term_data, MsgType msg_type)
         case TRANS_REQ_RECV:
             deal_trans_request();
             return ;    //this item don't need parse tlv
+        case ADVICE_RECV:
+            show_message("Advice Message:\n");
+            deal_advice(term_data);
+            break;
+
         default:
             break;
     }
@@ -441,9 +447,6 @@ void XGD_HOST::deal_term_data(QByteArray term_data, MsgType msg_type)
         case BATCH_UPLOAD_RECV:
             show_message("Batch Upload Message:\n");
             deal_batch_upload();
-            break;
-        case ADVICE_RECV:
-            show_message("Advice Message:\n");
             break;
         case REDO_RECV:
             show_message("Redo Message:\n");
@@ -2368,4 +2371,12 @@ void XGD_HOST::deal_term_outcome()
         temp_byte.clear();
         convertStringToHex(MessageID, temp_byte);
     }
+}
+
+void XGD_HOST::deal_advice(QByteArray term_data)
+{
+    int data_len = (quint8)(term_data.data()[2])*256 + (quint8)(term_data.data()[3]);
+    QString disp_mess(term_data.mid(4, data_len));
+
+    show_message(disp_mess);
 }
