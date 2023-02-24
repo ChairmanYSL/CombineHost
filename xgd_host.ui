@@ -661,6 +661,7 @@
     </property>
    </widget>
   </widget>
+  <widget class="QStatusBar" name="statusbar"/>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
@@ -670,8 +671,31 @@
      <height>26</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menu_F">
+    <property name="title">
+     <string>File(&amp;F)</string>
+    </property>
+    <widget class="QMenu" name="menuLog_File">
+     <property name="title">
+      <string>Log File</string>
+     </property>
+     <addaction name="action_Open"/>
+     <addaction name="action_Close"/>
+    </widget>
+    <addaction name="menuLog_File"/>
+   </widget>
+   <addaction name="menu_F"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
+  <action name="action_Open">
+   <property name="text">
+    <string>Open</string>
+   </property>
+  </action>
+  <action name="action_Close">
+   <property name="text">
+    <string> Close</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>

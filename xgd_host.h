@@ -72,6 +72,7 @@ public:
 
     QMap<QString, QString> tlv_map;   //hashmap,function is similar to avl tree in emvbase,it provides key-value data-struct to save tags
     int tlv2qmap(QByteArray tlv_data);
+    void tlv2qmap(QString tlv_data, QMap<QString, QString> &p_map);
     QString select_file_name;
 //    QDomDocument xml_doc;
     QMap<QString, quint8> config_load_map;
@@ -108,6 +109,11 @@ private slots:
 
     void on_checkBox_TransType_stateChanged(int arg1);
 
+//    void on_action_Close_stateChanged(int arg1);
+
+//    void on_action_Open_stateChanged(int arg1);
+
+
 private:
     Ui::XGD_HOST *ui;
     QSerialPort m_serial;
@@ -115,7 +121,9 @@ private:
     QString cur_config_dir;
     QByteArray download_counter;
 
-//    void init_tlv_map();
+    void init_tlv_map();
+    void open_log();
+    void close_log();
     void init_config_dir();
     void deal_term_data(QByteArray term_data, MsgType msg_type);
     void deal_finance_request();
@@ -139,6 +147,9 @@ private:
     void deal_term_outcome();
     void show_trans_result(QString cardBrand, quint8 trans_result);
     void show_trans_outcome(QString cardBrand, quint8 trans_outcome);
+    void show_trans_outcome(QString outcome);
+    void show_ui(QString ui_str);
+    void show_data_record(QString data_record);
 
 };
 #endif // XGD_HOST_H

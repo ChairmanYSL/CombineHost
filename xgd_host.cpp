@@ -56,6 +56,9 @@ XGD_HOST::XGD_HOST(QWidget *parent)
     ui->plainTextEdit_Message->setReadOnly(true);
     ui->plainTextEdit_Message->setVerticalScrollBar(ui->verticalScrollBar_Message);
     ui->plainTextEdit_Message->insertPlainText("Welcome!\n");
+
+    connect(ui->action_Open, &QAction::triggered, this, &XGD_HOST::open_log);
+    connect(ui->action_Close, &QAction::triggered, this, &XGD_HOST::close_log);
 }
 
 XGD_HOST::~XGD_HOST()
@@ -251,7 +254,7 @@ void XGD_HOST::on_pushButton_OpenSerial_clicked()
         QMessageBox::critical(this, "Error", "Open Serial Port Error!!!");
         return;
     }
-    show_message("open "+serialport_name+" Success!");
+    show_message("open "+serialport_name+" Success!\n");
 
     cur_baud_rate = ui->comboBox_BaudRate->currentText();
     m_serial.setBaudRate(cur_baud_rate.toUInt());
@@ -301,9 +304,84 @@ void XGD_HOST::on_pushButton_ClrMessage_clicked()
     ui->plainTextEdit_Message->clear();
 }
 
+void XGD_HOST::tlv2qmap(QString tlv_data, QMap<QString, QString> &p_map)
+{
+    int i = 0,t_len,l_len,v_len;
+    QByteArray Tag_Byte, Value_Byte, temp_byte;
+    QString Tag_str,Value_str;
+
+    convertStringToHex(tlv_data, temp_byte);
+
+    qDebug()<<"in tlv2qmap tlv data len: "<<temp_byte.length();
+    while(i < temp_byte.length())
+    {
+        //judge T
+        if((temp_byte.data()[i] & 0x1F) == 0x1F)
+        {
+            if((temp_byte.data()[i+1] & 0x80) == 0x80)
+            {
+                t_len = 3;
+            }
+            else
+            {
+                t_len = 2;
+            }
+        }
+        else
+        {
+            t_len = 1;
+        }
+        qDebug()<<"t_len:"<<t_len;
+        Tag_Byte = temp_byte.mid(i, t_len);
+        qDebug()<<"Tag in hex: "<<Tag_Byte;
+        //judge L
+        i += t_len;
+        if((temp_byte.data()[i] & 0x80) == 0x80)
+        {
+            l_len = (int)(temp_byte.data()[i] & 0x7F) + 1;
+        }
+        else
+        {
+            l_len = 1;
+        }
+        qDebug()<<"l_len:"<<t_len;
+
+        switch (l_len)
+        {
+            case 1:
+                v_len = (int)temp_byte.at(i);
+                break;
+            case 2:
+                v_len = (quint16)temp_byte.at(i+1) + (quint16)(temp_byte.at(i)<<8);
+                break;
+            case 3:
+                v_len = (quint32)temp_byte.at(i+2) + (quint32)(temp_byte.at(i+1)<<8) + (quint32)(temp_byte.at(i) << 16);
+                break;
+            default:
+                return ;
+        }
+        qDebug()<<"v_len:"<<v_len;
+        i+=l_len;
+        //judge V
+        Value_Byte = temp_byte.mid(i, v_len);
+        i+=v_len;
+        qDebug()<<"Value in hex:"<<Value_Byte;
+        Value_str = convertHexToString(Value_Byte);
+        Tag_str = convertHexToString(Tag_Byte);
+        p_map.insert(Tag_str, Value_str);
+    }
+
+    QMapIterator<QString, QString> it(p_map);
+    while (it.hasNext())
+    {
+        it.next();
+        qDebug()<<it.key()<<":"<<it.value();
+    }
+}
+
 int XGD_HOST::tlv2qmap(QByteArray tlv_data)
 {
-    int i = 0,t_len,l_len,v_len,j=0;
+    int i = 0,t_len,l_len,v_len;
     QByteArray Tag_Byte, Value_Byte;
     QString Tag_str,Value_str;
 
@@ -1668,8 +1746,14 @@ void XGD_HOST::deal_trans_request()
     show_message("\n");
     show_message("\n");
 
-    int ret;
-    ret = m_serial.write(send_data);
+    int ret = 0;
+    QString str_data;
+    QByteArray byte_data;
+    str_data = convertHexToString(send_data);
+//    ret = m_serial.write(send_data);
+    byte_data = str_data.toLatin1();
+    qDebug()<<"send asc data:"<<byte_data;
+    ret = m_serial.write(byte_data);
 }
 
 void XGD_HOST::on_pushButton_StartTrans_clicked()
@@ -1683,50 +1767,138 @@ void XGD_HOST::deal_trans_result()
     QString cur_brand = ui->comboBox_Brand->currentText();
     QString trans_outcome = tlv_map.find("DF23").value();
     QString trans_cvm = tlv_map.find("FF8109").value(); //set for discover
+    QString script_result = tlv_map.find("DF31").value();
+    QString oda_result = tlv_map.find("DFC10B").value();
+    QString str_outcome = tlv_map.find("DF8129").value();
+    QString data_record = tlv_map.find("FF8105").value();
     QString disp_message;
     QByteArray temp_byte;
 
-//    tlv_map.find("03")->isNull();
-
     //show transaction result
-    convertStringToHex(trans_result, temp_byte);
-    show_trans_result(cur_brand, temp_byte.at(0));
+    if(!trans_result.isEmpty() || !trans_result.isNull())
+    {
+        convertStringToHex(trans_result, temp_byte);
+        show_trans_result(cur_brand, temp_byte.at(0));
+    }
 
-    //show transaction outcome
-    temp_byte.clear();
-    convertStringToHex(trans_outcome,temp_byte);
-    show_trans_outcome(cur_brand, temp_byte.at(0));
+    //show DF23
+    if(!trans_outcome.isEmpty() || !trans_outcome.isNull())
+    {
+        temp_byte.clear();
+        convertStringToHex(trans_outcome,temp_byte);
+        show_trans_outcome(cur_brand, temp_byte.at(0));
+    }
 
     //show  cvm
-    temp_byte.clear();
-    convertStringToHex(trans_cvm, temp_byte);
-    switch (temp_byte.at(0))
+    if(!trans_cvm.isEmpty() || !trans_cvm.isNull())
     {
-        case 0x00:
-            show_message("CVM:  No CVM\n");
-            break;
-        case 0x10:
-            show_message("CVM:  Signature\n");
-            break;
-        case 0x20:
-            show_message("CVM:  Online PIN\n");
-            break;
-        case 0x30:
-            show_message("CVM:  CDCVM\n");
-            break;
-        case 0x40:
-            show_message("CVM:  N/A\n");
-            break;
-        default:
-            show_message("CVM:   Invalid data\n");
-            break;
+        temp_byte.clear();
+        convertStringToHex(trans_cvm, temp_byte);
+        switch (temp_byte.at(0))
+        {
+            case 0x00:
+                show_message("CVM:  No CVM\n");
+                break;
+            case 0x10:
+                show_message("CVM:  Signature\n");
+                break;
+            case 0x20:
+                show_message("CVM:  Online PIN\n");
+                break;
+            case 0x30:
+                show_message("CVM:  CDCVM\n");
+                break;
+            case 0x40:
+                show_message("CVM:  N/A\n");
+                break;
+            default:
+                show_message("CVM:   Invalid data\n");
+                break;
+        }
     }
+    //show scpite result
+    if(!script_result.isEmpty() || !script_result.isNull())
+    {
+        show_message("Script Result:"+script_result+"\n");
+    }
+
+    //show oda result
+    if(!oda_result.isEmpty() || !oda_result.isNull())
+    {
+        show_message("ODA Result:");
+        if(oda_result == "00")
+        {
+            show_message("ODA not Performed\n");
+        }
+        else if(oda_result == "01")
+        {
+            show_message("fDDA Succeed\n");
+        }
+        else if(oda_result == "02")
+        {
+            show_message("fDDA Failed\n");
+        }
+        else if(oda_result == "03")
+        {
+            show_message("SDA Succeed\n");
+        }
+        else if(oda_result == "04")
+        {
+            show_message("SDA Failed\n");
+        }
+        else if(oda_result == "05")
+        {
+            show_message("DDA Succeed\n");
+        }
+        else if(oda_result == "06")
+        {
+            show_message("DDA Failed\n");
+        }
+        else if(oda_result == "07")
+        {
+            show_message("CDA Succeed\n");
+        }
+        else if(oda_result == "08")
+        {
+            show_message("CDA Failed\n");
+        }
+        else if(oda_result == "09")
+        {
+            show_message("Online fDDA Succeed and Display\n");
+        }
+        else if(oda_result == "0A")
+        {
+            show_message("Online fDDA Failed and Display\n");
+        }
+        else if(oda_result == "0B")
+        {
+            show_message("Online SDA Succeed and Display\n");
+        }
+        else if(oda_result == "0C")
+        {
+            show_message("Online SDA Failed and Display\n");
+        }
+        else if(oda_result == "0D")
+        {
+            show_message("Online ODA Failed and Display\n");
+        }
+        else
+        {
+            show_message("Invalid Data\n");
+        }
+    }
+
+    //show transaction outcome for jcb
+    show_trans_outcome(str_outcome);
+
+    //show data record for jcb
+    show_data_record(data_record);
 
     QMapIterator<QString, QString> it(tlv_map);
     while (it.hasNext())
     {
         it.next();
-        if(it.key() == "03" || it.key() == "DF23" || it.key() == "FF8109")
+        if(it.key() == "03" || it.key() == "DF23" || it.key() == "FF8109" || it.key() == "DF31" || it.key() == "DFC10B" || it.key() == "DF8129" || it.key() == "FF8105")
         {
             continue;
         }
@@ -1891,6 +2063,16 @@ void XGD_HOST::on_checkBox_TransType_stateChanged(int arg1)
         TransTypePresentFlag = true;
     }
 }
+
+//void XGD_HOST::on_action_Close_stateChanged(int arg1)
+//{
+//    qDebug()<<"close log arg1: "<<arg1;
+//}
+
+//void XGD_HOST::on_action_Open_stateChanged(int arg1)
+//{
+//    qDebug()<<"open log arg1: "<<arg1;
+//}
 
 void XGD_HOST::deal_finance_confirm()
 {
@@ -2095,6 +2277,248 @@ void XGD_HOST::show_trans_result(QString cardBrand, quint8 trans_result)
                 break;
         }
     }
+}
+
+void XGD_HOST::show_trans_outcome(QString outcome)
+{
+    QString str_temp;
+    show_message("Transaction Outcome:\n");
+
+    str_temp = outcome.mid(1, 2);
+    if(str_temp.isEmpty() || str_temp.size() < 2)
+    {
+        qDebug()<<"Show Outcome Status fail!length invalid!"<<endl;
+        return;
+    }
+    show_message("    Outcome Status:");
+    if(str_temp == "10")
+    {
+        show_message("Approved\n");
+    }
+    else if(str_temp == "20")
+    {
+        show_message("Declined\n");
+    }
+    else if(str_temp == "30")
+    {
+        show_message("Online Request\n");
+    }
+    else if(str_temp == "40")
+    {
+        show_message("End Application\n");
+    }
+    else if(str_temp == "50")
+    {
+        show_message("Select Next\n");
+    }
+    else if(str_temp == "60")
+    {
+        show_message("Try Another Interface\n");
+    }
+    else if(str_temp == "A0")
+    {
+        show_message("End Application (with restart – communication error)\n");
+    }
+    else if(str_temp == "B0")
+    {
+        show_message("End Application (with restart - On-Device CVM)\n");
+    }
+    else if(str_temp == "C0")
+    {
+        show_message("Online Request (Two Presentments)\n");
+    }
+    else if(str_temp == "D0")
+    {
+        show_message("Online Request (Present and Hold)\n");
+    }
+    else
+    {
+        show_message("Invalid Data\n");
+    }
+
+    str_temp = outcome.mid(3, 2);
+    if(str_temp.isEmpty() || str_temp.size() < 2)
+    {
+        qDebug()<<"Show Start fail!length invalid!"<<endl;
+        return;
+    }
+    show_message("    Start:");
+    if(str_temp == "00")
+    {
+        show_message("A\n");
+    }
+    else if(str_temp == "10")
+    {
+        show_message("B\n");
+    }
+    else if(str_temp == "20")
+    {
+        show_message("C\n");
+    }
+    else if(str_temp == "30")
+    {
+        show_message("D\n");
+    }
+    else if(str_temp == "F0")
+    {
+        show_message("N/A\n");
+    }
+    else
+    {
+        show_message("Invalid Data\n");
+    }
+
+    str_temp = outcome.mid(5, 2);
+    if(str_temp.isEmpty() || str_temp.size() < 2)
+    {
+        qDebug()<<"Show Online Response Data fail!length invalid!"<<endl;
+        return;
+    }
+    show_message("    Online Response Data:");
+    if(str_temp == "10")
+    {
+        show_message("EMV Data\n");
+    }
+    else if(str_temp == "20")
+    {
+        show_message("Any\n");
+    }
+    else if(str_temp == "F0")
+    {
+        show_message("N/A\n");
+    }
+    else
+    {
+        show_message("Invalid Data\n");
+    }
+
+    str_temp = outcome.mid(7, 2);
+    if(str_temp.isEmpty() || str_temp.size() < 2)
+    {
+        qDebug()<<"Show CVM fail!length invalid!"<<endl;
+        return;
+    }
+    show_message("    CVM:");
+    if(str_temp == "00")
+    {
+        show_message("No CVM\n");
+    }
+    else if(str_temp == "10")
+    {
+        show_message("Obtain Signature\n");
+    }
+    else if(str_temp == "20")
+    {
+        show_message("Online PIN\n");
+    }
+    else if(str_temp == "30")
+    {
+        show_message("Confirmation Code Verified\n");
+    }
+    else if(str_temp == "F0")
+    {
+        show_message("N/A\n");
+    }
+    else
+    {
+        show_message("Invalid Data\n");
+    }
+
+    str_temp = outcome.mid(9, 2);
+    if(str_temp.isEmpty() || str_temp.size() < 2)
+    {
+        qDebug()<<"Show Flag fail!length invalid!"<<endl;
+        return;
+    }
+    show_message("    Flag:\n");
+
+    QByteArray byte_temp;
+    convertStringToHex(str_temp,byte_temp);
+
+    if((byte_temp.at(0) & 0x80) == 0x80)
+    {
+        show_message("        UI Request on Outcome Present:yes\n");
+    }
+    else
+    {
+        show_message("        UI Request on Outcome Present:no\n");
+    }
+    if((byte_temp.at(0) & 0x40) == 0x40)
+    {
+        show_message("        UI Request on Restart Present:yes\n");
+    }
+    else
+    {
+        show_message("        UI Request on Restart Present:no\n");
+    }
+    if((byte_temp.at(0) & 0x20) == 0x20)
+    {
+        show_message("        Data Record Present:yes\n");
+    }
+    else
+    {
+        show_message("        Data Record Present:no\n");
+    }
+    if((byte_temp.at(0) & 0x10) == 0x10)
+    {
+        show_message("        Discretionary Data Present:yes\n");
+    }
+    else
+    {
+        show_message("        Discretionary Data Present:no\n");
+    }
+    if((byte_temp.at(0) & 0x08) == 0x08)
+    {
+        show_message("        Receipt:yes\n");
+    }
+    else
+    {
+        show_message("        Receipt:no\n");
+    }
+
+    str_temp = outcome.mid(11, 2);
+    if(str_temp.isEmpty() || str_temp.size() < 2)
+    {
+        qDebug()<<"Show AIP fail!length invalid!"<<endl;
+        return;
+    }
+    show_message("    AIP:\n");
+    if(str_temp == "10")
+    {
+        show_message("Contant Chip\n");
+    }
+    else if(str_temp == "F0")
+    {
+        show_message("N/A\n");
+    }
+    else
+    {
+        show_message("Invalid Data\n");
+    }
+
+    str_temp = outcome.mid(13, 2);
+    if(str_temp.isEmpty() || str_temp.size() < 2)
+    {
+        qDebug()<<"Show Field Off Request fail!length invalid!"<<endl;
+        return;
+    }
+    show_message("    Field Off Request:\n");
+    if(str_temp == "FF")
+    {
+        show_message("N/A\n");
+    }
+    else
+    {
+        show_message(str_temp+"\n");
+    }
+
+    str_temp = outcome.mid(15, 4);
+    if(str_temp.isEmpty() || str_temp.size() < 4)
+    {
+        qDebug()<<"Show Field Off Request fail!length invalid!"<<endl;
+        return;
+    }
+    show_message("    Removal Timeout:"+str_temp+"\n");
 }
 
 void XGD_HOST::show_trans_outcome(QString cardBrand, quint8 trans_outcome)
@@ -2360,16 +2784,20 @@ void XGD_HOST::deal_batch_upload()
 
 void XGD_HOST::deal_term_outcome()
 {
-    QString UIReq = tlv_map.find("DF8116").value();
+    QString UIReqOnOutcome = tlv_map.find("DF8116").value();
+    QString UIReqOnRestart = tlv_map.find("DF8117").value();
     QByteArray temp_byte;
 
-    if(UIReq.isEmpty() == false)
+    if(UIReqOnOutcome.isEmpty() == false)
     {
         show_message("UI Request on Outcome:");
+        show_ui(UIReqOnOutcome);
+    }
 
-        QString MessageID = UIReq.at(0);
-        temp_byte.clear();
-        convertStringToHex(MessageID, temp_byte);
+    if(UIReqOnRestart.isEmpty() == false)
+    {
+        show_message("UI Request on Restart:");
+        show_ui(UIReqOnRestart);
     }
 }
 
@@ -2379,4 +2807,212 @@ void XGD_HOST::deal_advice(QByteArray term_data)
     QString disp_mess(term_data.mid(4, data_len));
 
     show_message(disp_mess);
+}
+
+void XGD_HOST::open_log()
+{
+    qInstallMessageHandler(outputMessage);
+    ui->action_Open->setChecked(true);
+    ui->action_Close->setChecked(false);
+}
+
+void XGD_HOST::close_log()
+{
+    qInstallMessageHandler(nullptr);
+    ui->action_Close->setChecked(true);
+    ui->action_Open->setChecked(false);
+}
+
+void XGD_HOST::show_ui(QString ui_str)
+{
+    QString temp_str;
+
+    temp_str = ui_str.mid(1, 2);
+    if(temp_str.isEmpty() || temp_str.size() < 2)
+    {
+        qDebug()<<"parse UI Message Identifier fail!length invalid!"<<endl;
+        return;
+    }
+    show_message("Message Identifier:");
+    if(temp_str == "03")
+    {
+        show_message("Approved\n");
+    }
+    else if(temp_str == "07")
+    {
+        show_message("Not Authorised\n");
+    }
+    else if(temp_str == "09")
+    {
+        show_message("Please enter your PIN\n");
+    }
+    else if(temp_str == "15")
+    {
+        show_message("Present Card\n");
+    }
+    else if(temp_str == "16")
+    {
+        show_message("Processing\n");
+    }
+    else if(temp_str == "17")
+    {
+        show_message("Card Read OK\n");
+    }
+    else if(temp_str == "19")
+    {
+        show_message("Please Present One Card Only\n");
+    }
+    else if(temp_str == "1A")
+    {
+        show_message("Approved – Please Sign\n");
+    }
+    else if(temp_str == "1B")
+    {
+        show_message("Authorising, Please Wait\n");
+    }
+    else if(temp_str == "1C")
+    {
+        show_message("Insert, Swipe or Try another card\n");
+    }
+    else if(temp_str == "1D")
+    {
+        show_message("Please insert card\n");
+    }
+    else if(temp_str == "20")
+    {
+        show_message("See Phone for Instructions\n");
+    }
+    else if(temp_str == "21")
+    {
+        show_message("Present Card Again\n");
+    }
+    else
+    {
+        show_message("Invalid Data\n");
+    }
+
+    temp_str = ui_str.mid(3, 2);
+    if(temp_str.isEmpty() || temp_str.size() < 2)
+    {
+        qDebug()<<"parse UI Status fail!length invalid!"<<endl;
+        return;
+    }
+    show_message("Status:");
+    if(temp_str == "00")
+    {
+        show_message("NOT READY\n");
+    }
+    else if(temp_str == "01")
+    {
+        show_message("IDLE\n");
+    }
+    else if(temp_str == "02")
+    {
+        show_message("READY TO READ\n");
+    }
+    else if(temp_str == "03")
+    {
+        show_message("PROCESSING\n");
+    }
+    else if(temp_str == "04")
+    {
+        show_message("CARD READ SUCCESSFULLY\n");
+    }
+    else if(temp_str == "05")
+    {
+        show_message("PROCESSING ERROR\n");
+    }
+    else if(temp_str == "FF")
+    {
+        show_message("N/A\n");
+    }
+    else
+    {
+        show_message("Invalid Data\n");
+    }
+
+    temp_str = ui_str.mid(5, 6);
+    if(temp_str.isEmpty() || temp_str.size() < 6)
+    {
+        qDebug()<<"parse UI Hold Time fail!length invalid!"<<endl;
+        return;
+    }
+    show_message("Hold Time:"+temp_str+"\n");
+
+    temp_str = ui_str.mid(10, 16);
+    if(temp_str.isEmpty() == false && temp_str.size() == 16)
+    {
+        show_message("Language Preference:"+temp_str+"\n");
+    }
+
+    temp_str = ui_str.mid(26, 2);
+    if(temp_str.isEmpty() || temp_str.size() < 2)
+    {
+        qDebug()<<"parse UI Value Qualifier fail!length invalid!"<<endl;
+        return;
+    }
+    show_message("Value Qualifier:");
+    if(temp_str == "20")
+    {
+        show_message("Balance\n");
+    }
+
+    temp_str = ui_str.mid(28, 12);
+    if(temp_str.isEmpty() == false && temp_str.size() == 12)
+    {
+        show_message("Value:"+temp_str+"\n");
+    }
+
+    temp_str = ui_str.mid(40, 4);
+    if(temp_str.isEmpty() == false && temp_str.size() == 4)
+    {
+        show_message("Currency Code:"+temp_str+"\n");
+    }
+}
+
+void XGD_HOST::init_tlv_map()
+{
+    tlv_map.clear();
+
+    tlv_map.insert("TVR", "95");
+    tlv_map.insert("Script Result", "DF31");
+    tlv_map.insert("ODA Result", "DFC10B");
+    tlv_map.insert("TSI", "9B");
+}
+
+void XGD_HOST::show_data_record(QString data_record)
+{
+    QMap<QString, QString>p_map;
+    show_message("Data Record:\n");
+
+    tlv2qmap(data_record, p_map);
+    QMapIterator<QString,QString> it(p_map);
+    while (it.hasNext())
+    {
+        it.next();
+        if(it.key() == "DF43")
+        {
+            show_message("    Transaction Mode:");
+            if(it.value() == "01")
+            {
+                show_message("EMV Mode\n");
+            }
+            else if(it.value() == "02")
+            {
+                show_message("Magstripe Mode\n");
+            }
+            else if(it.value() == "04")
+            {
+                show_message("Legacy Mode\n");
+            }
+            else
+            {
+                show_message("Invalid Data\n");
+            }
+        }
+        else
+        {
+            show_message("    "+it.key()+":"+it.value()+"\n");
+        }
+    }
 }
