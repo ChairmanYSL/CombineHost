@@ -297,6 +297,7 @@ void XGD_HOST::readTermData()
 
     char temp = term_data.data()[1];
     deal_term_data(term_data, (XGD_HOST::MsgType)(quint8)temp);
+    m_serial.flush();
 }
 
 void XGD_HOST::on_pushButton_ClrMessage_clicked()
@@ -1958,13 +1959,13 @@ void XGD_HOST::deal_finance_request()
 
     if(cur_brand == "ExpressPay")
     {
-        if(tlv_map.find("56")->isNull() != true)
+        if(tlv_map.find("56") != tlv_map.end())
         {
             disp_message.clear();
             disp_message.append("Track 1 Data: "+tlv_map.find("56").value());
             show_message(disp_message+"\n");
         }
-        if(tlv_map.find("9F6B")->isNull() != true)
+        if(tlv_map.find("9F6B") != tlv_map.end())
         {
             disp_message.clear();
             disp_message.append("Track 2 Data: "+tlv_map.find("9F6B").value());
@@ -2078,17 +2079,23 @@ void XGD_HOST::deal_finance_confirm()
 {
     QString disp_message;
     QString cur_brand = ui->comboBox_Brand->currentText();
-    QString trans_result = tlv_map.find("03").value();
     QByteArray temp_byte;
 
-    convertStringToHex(trans_result, temp_byte);
-    show_trans_result(cur_brand, temp_byte.at(0));
+    qDebug()<<"cur brand:"<<cur_brand;
+    if(tlv_map.find("03") != tlv_map.end())
+    {
+        qDebug()<<"find 03!"<<endl;
+        QString trans_result = tlv_map.find("03").value();
+        temp_byte.clear();
+        convertStringToHex(trans_result, temp_byte);
+        show_trans_result(cur_brand, temp_byte.at(0));
+    }
 
     QMapIterator<QString, QString> it(tlv_map);
     while (it.hasNext())
     {
         it.next();
-        if(it.key() == "DF31" || it.key() == "03" || it.key() == "DF30" || it.key() == "56" || it.key() == "9F6B")
+        if(it.key() == "DF31" || it.key() == "03" || it.key() == "DF30" || it.key() == "56" || it.key() == "9F6B" || it.key() == "FF8186")
         {
             continue;
         }
@@ -2108,13 +2115,13 @@ void XGD_HOST::deal_finance_confirm()
 
     if(cur_brand == "ExpressPay")
     {
-        if(tlv_map.find("56")->isNull() != true)
+        if(tlv_map.find("56") != tlv_map.end())
         {
             disp_message.clear();
             disp_message.append("Track 1 Data: "+tlv_map.find("56").value());
             show_message(disp_message+"\n");
         }
-        if(tlv_map.find("9F6B")->isNull() != true)
+        if(tlv_map.find("9F6B") != tlv_map.end())
         {
             disp_message.clear();
             disp_message.append("Track 2 Data: "+tlv_map.find("9F6B").value());
@@ -2123,12 +2130,70 @@ void XGD_HOST::deal_finance_confirm()
     }
     else if(cur_brand == "Discover")
     {
-        if(tlv_map.find("DF30")->isNull() != true)
+        if(tlv_map.find("DF30") != tlv_map.end())
         {
             disp_message.clear();
             disp_message.append("Data Storage Write Results: "+tlv_map.find("DF30").value());
             show_message(disp_message+"\n");
-        }    }
+        }
+    }
+    else if(cur_brand == "Paywave")
+    {
+        qDebug()<<"start parse FF8186!"<<endl;
+        if(tlv_map.find("FF8186") != tlv_map.end())
+        {
+            qDebug()<<"find it!fuck!!!"<<endl;
+            show_message("Result Indicator:\n");
+            QString paywave_resIndicator = tlv_map.find("FF8186").value();
+            temp_byte.clear();
+            qDebug()<<"FF8186 value:"<<endl;
+            convertStringToHex(paywave_resIndicator, temp_byte);
+            qDebug()<<"change to hex:"<<temp_byte;
+            qDebug()<<"temp_byte.size:"<<temp_byte.size();
+            if(temp_byte.size() == 1)
+            {
+                if((temp_byte.at(0) & 0x01) == 0x01)
+                {
+                    show_message("  fDDA verification not performed\n");
+                }
+                else
+                {
+                    if((temp_byte.at(0) & 0x02) == 0x02)
+                    {
+                        show_message("  fDDA verification is performed and successful\n");
+                    }
+                    else
+                    {
+                        show_message("  fDDA verification is performed and failed\n");
+                    }
+                }
+                if((temp_byte.at(0) & 0x04) == 0x04)
+                {
+                    show_message("  Application expired\n");
+                }
+                else
+                {
+                    show_message("  Application not expired\n");
+                }
+                if((temp_byte.at(0) & 0x08) == 0x08)
+                {
+                    show_message("  Application PAN on the Terminal Exception File\n");
+                }
+                else
+                {
+                    show_message("  Application PAN is not on the Terminal Exception File\n");
+                }
+                if((temp_byte.at(0) & 0x10) == 0x10)
+                {
+                    show_message("  Online Required by Reader Indicator\n");
+                }
+                else
+                {
+                    show_message("  Decline Required by Reader Indicator\n");
+                }
+            }
+        }
+    }
 
     show_message("\n");
     show_message("\n");
@@ -2638,13 +2703,13 @@ void XGD_HOST::deal_authorize_request()
 
     if(cur_brand == "ExpressPay")
     {
-        if(tlv_map.find("56")->isNull() != true)
+        if(tlv_map.find("56") != tlv_map.end())
         {
             disp_message.clear();
             disp_message.append("Track 1 Data: "+tlv_map.find("56").value());
             show_message(disp_message+"\n");
         }
-        if(tlv_map.find("9F6B")->isNull() != true)
+        if(tlv_map.find("9F6B") != tlv_map.end())
         {
             disp_message.clear();
             disp_message.append("Track 2 Data: "+tlv_map.find("9F6B").value());
@@ -2741,13 +2806,13 @@ void XGD_HOST::deal_batch_upload()
 
     if(cur_brand == "ExpressPay")
     {
-        if(tlv_map.find("56")->isNull() != true)
+        if(tlv_map.find("56") != tlv_map.end())
         {
             disp_message.clear();
             disp_message.append("Track 1 Data: "+tlv_map.find("56").value());
             show_message(disp_message+"\n");
         }
-        if(tlv_map.find("9F6B")->isNull() != true)
+        if(tlv_map.find("9F6B") != tlv_map.end())
         {
             disp_message.clear();
             disp_message.append("Track 2 Data: "+tlv_map.find("9F6B").value());
@@ -2756,7 +2821,7 @@ void XGD_HOST::deal_batch_upload()
     }
     else if(cur_brand == "Discover")
     {
-        if(tlv_map.find("DF30")->isNull() != true)
+        if(tlv_map.find("DF30") != tlv_map.end())
         {
             disp_message.clear();
             disp_message.append("Data Storage Write Results: "+tlv_map.find("DF30").value());
