@@ -280,7 +280,7 @@ void XGD_HOST::readTermData()
 {
     QByteArray term_data = m_serial.readAll();
 
-    if(term_data.isEmpty())
+    if(term_data.size() <= 0)
     {
         qDebug()<<"Recv Term Data is null!"<<endl;
         QMessageBox::information(this, "info", "Receive Term Data is Null");
@@ -297,7 +297,6 @@ void XGD_HOST::readTermData()
 
     char temp = term_data.data()[1];
     deal_term_data(term_data, (XGD_HOST::MsgType)(quint8)temp);
-    m_serial.flush();
 }
 
 void XGD_HOST::on_pushButton_ClrMessage_clicked()
@@ -587,7 +586,7 @@ void XGD_HOST::deal_simdata_download()
         temp.clear();
         convertStringToHex(endLine, temp);
         send_data.append(temp);
-        qDebug()<<"send data:"<<send_data;
+        TraceHexFromByteArray("send data:", send_data);
         m_serial.write(send_data);
         config_load_map.find("SimData_Cur_Index").value() = 0; //reset index
         return;
@@ -667,7 +666,7 @@ void XGD_HOST::deal_simdata_download()
     send_data.insert(2, high);
     send_data.insert(3,low);
     qDebug()<<"send data size:"<<send_data.size();
-    qDebug()<<"send data:"<<send_data;
+    TraceHexFromByteArray("send data:", send_data);
 
     show_message("\n");
     show_message("\n");
@@ -697,7 +696,7 @@ void XGD_HOST::deal_revokey_download()
         temp.clear();
         convertStringToHex(endLine, temp);
         send_data.append(temp);
-        qDebug()<<"send data:"<<send_data;
+        TraceHexFromByteArray("send data:", send_data);
         m_serial.write(send_data);
         config_load_map.find("Revokey_Cur_Index").value() = 0; //reset index
         return;
@@ -777,7 +776,7 @@ void XGD_HOST::deal_revokey_download()
     send_data.insert(2, high);
     send_data.insert(3,low);
     qDebug()<<"send data size:"<<send_data.size();
-    qDebug()<<"send data:"<<send_data;
+    TraceHexFromByteArray("send data:", send_data);
 
     show_message("\n");
     show_message("\n");
@@ -807,7 +806,7 @@ void XGD_HOST::deal_blacklist_download()
         temp.clear();
         convertStringToHex(endLine, temp);
         send_data.append(temp);
-        qDebug()<<"send data:"<<send_data;
+        TraceHexFromByteArray("send data:", send_data);
         m_serial.write(send_data);
         config_load_map.find("ExecptionFile_Cur_Index").value() = 0; //reset index
         return;
@@ -888,7 +887,7 @@ void XGD_HOST::deal_blacklist_download()
     send_data.insert(2, high);
     send_data.insert(3,low);
     qDebug()<<"send data size:"<<send_data.size();
-    qDebug()<<"send data:"<<send_data;
+    TraceHexFromByteArray("send data:", send_data);
 
     show_message("\n");
     show_message("\n");
@@ -918,7 +917,7 @@ void XGD_HOST::deal_drl_download()
         temp.clear();
         convertStringToHex(endLine, temp);
         send_data.append(temp);
-        qDebug()<<"send data:"<<send_data;
+        TraceHexFromByteArray("send data:", send_data);
         m_serial.write(send_data);
         config_load_map.find("DRL_Cur_Index").value() = 0; //reset index
         return;
@@ -998,7 +997,7 @@ void XGD_HOST::deal_drl_download()
     send_data.insert(2, high);
     send_data.insert(3,low);
     qDebug()<<"send data size:"<<send_data.size();
-    qDebug()<<"send data:"<<send_data;
+    TraceHexFromByteArray("send data:", send_data);
 
     show_message("\n");
     show_message("\n");
@@ -1028,7 +1027,7 @@ void XGD_HOST::deal_capk_download()
         temp.clear();
         convertStringToHex(endLine, temp);
         send_data.append(temp);
-        qDebug()<<"send data:"<<send_data;
+        TraceHexFromByteArray("send data:", send_data);
         m_serial.write(send_data);
         config_load_map.find("CAPK_Cur_Index").value() = 0; //reset index
         return;
@@ -1110,7 +1109,7 @@ void XGD_HOST::deal_capk_download()
     send_data.insert(2, high);
     send_data.insert(3,low);
     qDebug()<<"send data size:"<<send_data.size();
-    qDebug()<<"send data:"<<send_data;
+    TraceHexFromByteArray("send data:", send_data);
 
     show_message("\n");
     show_message("\n");
@@ -1140,7 +1139,7 @@ void XGD_HOST::deal_aid_download()
         temp.clear();
         convertStringToHex(endLine, temp);
         send_data.append(temp);
-        qDebug()<<"send data:"<<send_data;
+        TraceHexFromByteArray("send data:", send_data);
         m_serial.write(send_data);
         config_load_map.find("AID_Cur_Index").value() = 0; //reset index
         return;
@@ -1220,7 +1219,7 @@ void XGD_HOST::deal_aid_download()
     send_data.insert(2, high);
     send_data.insert(3,low);
     qDebug()<<"send data size:"<<send_data.size();
-    qDebug()<<"send data:"<<send_data;
+    TraceHexFromByteArray("send data:", send_data);
 
     show_message("\n");
     show_message("\n");
@@ -1598,7 +1597,6 @@ void XGD_HOST::deal_trans_request()
         convertStringToHex(temp_str, temp_byte);
         send_data.append(temp_byte);
         send_data_len += temp_byte.size();
-        qDebug()<<"LINE:  "<<__LINE__<<"send data len: "<<send_data_len<<endl;
 
         temp_str.clear();
         temp_str = ui->lineEdit_Amt->text();
@@ -1607,7 +1605,6 @@ void XGD_HOST::deal_trans_request()
         {
             send_data.append(0x06);
             send_data_len += 1;
-            qDebug()<<"LINE:  "<<__LINE__<<"send data len: "<<send_data_len<<endl;
             qDebug()<<"get amt from widget:"<<temp_str;
 
             temp_str.remove('.');
@@ -1628,7 +1625,6 @@ void XGD_HOST::deal_trans_request()
             send_data.append(temp_byte);
             TraceHexFromByteArray("after append 9F02", send_data);
             send_data_len += temp_byte.size();
-            qDebug()<<"LINE:  "<<__LINE__<<"send data len: "<<send_data_len<<endl;
         }
         else
         {
@@ -1643,7 +1639,6 @@ void XGD_HOST::deal_trans_request()
             TraceHexFromByteArray("temp_byte:", temp_byte);
             send_data.append(temp_byte);
             send_data_len += temp_byte.size();
-            qDebug()<<"LINE:  "<<__LINE__<<"send data len: "<<send_data_len<<endl;
         }
     }
 
@@ -1656,7 +1651,6 @@ void XGD_HOST::deal_trans_request()
         convertStringToHex(temp_str, temp_byte);
         send_data.append(temp_byte);
         send_data_len += temp_byte.size();
-        qDebug()<<"LINE:  "<<__LINE__<<"send data len: "<<send_data_len<<endl;
 
         temp_str.clear();
         temp_str = ui->lineEdit_AmtOther->text();
@@ -1665,7 +1659,6 @@ void XGD_HOST::deal_trans_request()
         {
             send_data.append(0x06);
             send_data_len += 1;
-            qDebug()<<"LINE:  "<<__LINE__<<"send data len: "<<send_data_len<<endl;
 
             qDebug()<<"get amt other from widget:"<<temp_str;
 
@@ -1688,7 +1681,6 @@ void XGD_HOST::deal_trans_request()
             TraceHexFromByteArray("after append 9F03", send_data);
 
             send_data_len += temp_byte.size();
-            qDebug()<<"LINE:  "<<__LINE__<<"send data len: "<<send_data_len<<endl;
         }
         else
         {
@@ -3079,5 +3071,54 @@ void XGD_HOST::show_data_record(QString data_record)
         {
             show_message("    "+it.key()+":"+it.value()+"\n");
         }
+    }
+}
+
+void XGD_HOST::on_pushButton_DownloadSimdata_clicked()
+{
+    QDomDocument xml_doc;
+    QFile file;
+    QString config_name = ui->comboBox_SimData->currentText()+".xml";
+
+    file.setFileName(cur_config_dir + "/"+cur_brand+"/SimData/"+config_name);
+    qDebug()<<"SimData file name:"<<file.fileName();
+
+    if(file.open(QIODevice::ReadOnly) != true)
+    {
+        qDebug()<<"Open SimData xml fail!!!"<<endl;
+        return;
+    }
+
+    if(xml_doc.setContent(&file) != true)
+    {
+        qDebug()<<"Parse SimData xml fail,Check file format!!"<<endl;
+        return;
+    }
+    file.close();
+
+    show_message("Load SimData:"+config_name+"\n");
+
+    QDomNode rootNode = xml_doc.firstChild();
+    qDebug()<<qPrintable(rootNode.nodeName()+"\n")<<qPrintable(rootNode.nodeValue());
+    //return root element
+    QDomElement rootElement = xml_doc.documentElement();
+    //return first child node of root node
+    QDomNode n = rootElement.firstChild();
+    int i = 0;
+    while(n.isNull() != true)
+    {
+        qDebug()<<"node name:"<<n.nodeName();
+        i+=1;
+        n = n.nextSibling();
+    }
+    qDebug()<<"this xml has aid:"<<i;
+    config_load_map.find("SimData_Counter").value() = i;
+    config_load_map.find("SimData_Cur_Index").value() = 0;
+
+    QMapIterator<QString, quint8> it(config_load_map);
+    while(it.hasNext())
+    {
+        it.next();
+        qDebug()<<it.key()<<":"<<it.value();
     }
 }
