@@ -116,6 +116,8 @@ private slots:
 
     void on_pushButton_DownloadSimdata_clicked();
 
+    void on_pushButton_DownloadRevokey_clicked();
+
 private:
     Ui::XGD_HOST *ui;
     QSerialPort m_serial;

@@ -3122,3 +3122,58 @@ void XGD_HOST::on_pushButton_DownloadSimdata_clicked()
         qDebug()<<it.key()<<":"<<it.value();
     }
 }
+
+void XGD_HOST::on_pushButton_DownloadRevokey_clicked()
+{
+    QDomDocument xml_doc;
+    QFile file;
+    QString config_name = ui->comboBox_Revokey->currentText()+".xml";
+
+    file.setFileName(cur_config_dir + "/"+cur_brand+"/Revocation_CAPK/"+config_name);
+    qDebug()<<"Revocation_CAPK file name:"<<file.fileName();
+
+    if(file.open(QIODevice::ReadOnly) != true)
+    {
+        qDebug()<<"Open Revocation_CAPK xml fail!!!"<<endl;
+        return;
+    }
+
+    QString error;
+    int errorline=0;
+    int errorcol=0;
+    if(xml_doc.setContent(&file, &error, &errorline, &errorcol) != true)
+    {
+        qDebug()<<"Parse Revocation_CAPK xml fail,Check file format!!"<<endl;
+        qDebug()<<"Error Message:"<<error;
+        qDebug()<<"Error Line:"<<errorline;
+        qDebug()<<"Error Column:"<<errorcol;
+        return;
+    }
+    file.close();
+
+    show_message("Load Revocation_CAPK:"+config_name+"\n");
+
+    QDomNode rootNode = xml_doc.firstChild();
+    qDebug()<<qPrintable(rootNode.nodeName()+"\n")<<qPrintable(rootNode.nodeValue());
+    //return root element
+    QDomElement rootElement = xml_doc.documentElement();
+    //return first child node of root node
+    QDomNode n = rootElement.firstChild();
+    int i = 0;
+    while(n.isNull() != true)
+    {
+        qDebug()<<"node name:"<<n.nodeName();
+        i+=1;
+        n = n.nextSibling();
+    }
+    qDebug()<<"this xml has Revocation_CAPK:"<<i;
+    config_load_map.find("Revokey_Counter").value() = i;
+    config_load_map.find("Revokey_Cur_Index").value() = 0;
+
+    QMapIterator<QString, quint8> it(config_load_map);
+    while(it.hasNext())
+    {
+        it.next();
+        qDebug()<<it.key()<<":"<<it.value();
+    }
+}
