@@ -16,11 +16,13 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+#    avl.cpp \
     main.cpp \
     tool.cpp \
     xgd_host.cpp
 
 HEADERS += \
+#    avl.h \
     tool.h \
     xgd_host.h
 
@@ -43,6 +45,7 @@ QMAKE_TARGET_DESCRIPTION = "EMV Test Host"
 QMAKE_TARGET_COPYRIGHT = "Powered by bruce lee. All rights reserved."
 # 中文（简体）
 RC_LANG = 0x0004
+
 
 #UI_DIR = ./UI
 DEFINES += QT_MESSAGELOGCONTEXT

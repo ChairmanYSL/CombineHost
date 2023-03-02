@@ -486,7 +486,7 @@ void XGD_HOST::deal_term_data(QByteArray term_data, MsgType msg_type)
             deal_trans_request();
             return ;    //this item don't need parse tlv
         case ADVICE_RECV:
-            show_message("Advice Message:\n");
+//            show_message("Advice Message:\n");
             deal_advice(term_data);
             return ;
 
@@ -1740,6 +1740,173 @@ void XGD_HOST::deal_trans_request()
     show_message("\n");
 
     int ret = 0;
+    ret = m_serial.write(send_data);
+}
+
+void XGD_HOST::on_pushButton_StartTrans_clicked()
+{
+    QByteArray send_data;
+    int send_data_len = 0, temp_len = 0;
+    QString temp_str;
+    QByteArray temp_byte;
+    char low,high;
+
+    show_message("Transaction Request Message:\n");
+
+    send_data.append(STX);
+    send_data.append(TRANS_REQ_SEND);
+    //load 9F02
+    if(AmtPresentFlag)
+    {
+        temp_str.clear();
+        temp_str.append("9F02");
+        temp_byte.clear();
+        convertStringToHex(temp_str, temp_byte);
+        send_data.append(temp_byte);
+        send_data_len += temp_byte.size();
+
+        temp_str.clear();
+        temp_str = ui->lineEdit_Amt->text();
+        qDebug()<<"9F02 Empty:"<<temp_str.isEmpty();
+        if(temp_str.isEmpty() != true)
+        {
+            send_data.append(0x06);
+            send_data_len += 1;
+            qDebug()<<"get amt from widget:"<<temp_str;
+
+            temp_str.remove('.');
+            if(temp_str.size() < 12) //补高位的0
+            {
+                temp_len = temp_str.size();
+                for(int i = 0; i < 12-temp_len; i++)
+                {
+                    temp_str.insert(0, '0');
+                }
+            }
+            qDebug()<<"cur amount: "<<temp_str;
+            show_message("9F02: "+temp_str+"\n");
+            temp_byte.clear();
+            convertStringToHex(temp_str, temp_byte);
+            TraceHexFromByteArray("9F02 in hex", temp_byte);
+
+            send_data.append(temp_byte);
+            TraceHexFromByteArray("after append 9F02", send_data);
+            send_data_len += temp_byte.size();
+        }
+        else
+        {
+            TraceHexFromByteArray("cur send data:", send_data);
+
+            temp_str.clear();
+            temp_str.append("00");
+            temp_byte.clear();
+            show_message("9F02: 0\n");
+            convertStringToHex(temp_str,temp_byte);
+
+            TraceHexFromByteArray("temp_byte:", temp_byte);
+            send_data.append(temp_byte);
+            send_data_len += temp_byte.size();
+        }
+    }
+
+    //load 9F03
+    if(AmtOtherPresentFlag)
+    {
+        temp_str.clear();
+        temp_str.append("9F03");
+        temp_byte.clear();
+        convertStringToHex(temp_str, temp_byte);
+        send_data.append(temp_byte);
+        send_data_len += temp_byte.size();
+
+        temp_str.clear();
+        temp_str = ui->lineEdit_AmtOther->text();
+        qDebug()<<"9F03 Empty:"<<temp_str.isEmpty();
+        if(temp_str.isEmpty() != true)
+        {
+            send_data.append(0x06);
+            send_data_len += 1;
+
+            qDebug()<<"get amt other from widget:"<<temp_str;
+
+            temp_str.remove('.');
+            if(temp_str.size() < 12) //补高位的0
+            {
+                temp_len = temp_str.size();
+                for(int i = 0; i < 12-temp_len; i++)
+                {
+                    temp_str.insert(0, '0');
+                }
+            }
+            qDebug()<<"cur amount other: "<<temp_str;
+            show_message("9F03: "+temp_str+"\n");
+            temp_byte.clear();
+            convertStringToHex(temp_str, temp_byte);
+            TraceHexFromByteArray("9F03 in hex", temp_byte);
+
+            send_data.append(temp_byte);
+            TraceHexFromByteArray("after append 9F03", send_data);
+
+            send_data_len += temp_byte.size();
+        }
+        else
+        {
+            temp_str.clear();
+            temp_str.append("00");
+            temp_byte.clear();
+            show_message("9F03: 0\n");
+            convertStringToHex(temp_str,temp_byte);
+            send_data.append(temp_byte);
+            send_data_len += temp_byte.size();
+        }
+    }
+
+    //load 9C
+    if(TransTypePresentFlag)
+    {
+        temp_str.clear();
+        temp_str.append("9C");
+        temp_byte.clear();
+        convertStringToHex(temp_str, temp_byte);
+        send_data.append(temp_byte);
+        send_data_len += temp_byte.size();
+
+        temp_str = ui->lineEdit_TransType->text();
+        if(temp_str.isEmpty() != true)
+        {
+            send_data.append(0x01);
+            send_data_len += 1;
+            qDebug()<<"get trans type from widget:"<<temp_str;
+            show_message("9C: "+temp_str+"\n");
+            temp_byte.clear();
+            convertStringToHex(temp_str, temp_byte);
+            send_data.append(temp_byte);
+            send_data_len += temp_byte.size();
+        }
+        else
+        {
+            temp_str.clear();
+            temp_str.append("00");
+            temp_byte.clear();
+            show_message("9C: 0\n");
+            convertStringToHex(temp_str,temp_byte);
+            send_data.append(temp_byte);
+            send_data_len += temp_byte.size();
+        }
+    }
+
+    high = (send_data_len>>8) & 0xFF;
+    low = (send_data_len) & 0xFF;
+    send_data.insert(2, high);
+    send_data.insert(3,low);
+
+    qDebug()<<"send data size:"<<send_data.size();
+    TraceHexFromByteArray("send data", send_data);
+
+    show_message("\n");
+    show_message("\n");
+
+    int ret = 0;
     QString str_data;
     QByteArray byte_data;
     str_data = convertHexToString(send_data);
@@ -1747,44 +1914,36 @@ void XGD_HOST::deal_trans_request()
     byte_data = str_data.toLatin1();
     qDebug()<<"send asc data:"<<byte_data;
     ret = m_serial.write(byte_data);
-}
 
-void XGD_HOST::on_pushButton_StartTrans_clicked()
-{
-    deal_trans_request();
 }
 
 void XGD_HOST::deal_trans_result()
 {
-    QString trans_result = tlv_map.find("03").value();
     QString cur_brand = ui->comboBox_Brand->currentText();
-    QString trans_outcome = tlv_map.find("DF23").value();
-    QString trans_cvm = tlv_map.find("FF8109").value(); //set for discover
-    QString script_result = tlv_map.find("DF31").value();
-    QString oda_result = tlv_map.find("DFC10B").value();
-    QString str_outcome = tlv_map.find("DF8129").value();
-    QString data_record = tlv_map.find("FF8105").value();
     QString disp_message;
     QByteArray temp_byte;
 
     //show transaction result
-    if(!trans_result.isEmpty() || !trans_result.isNull())
+    if(tlv_map.find("03") != tlv_map.end())
     {
+        QString trans_result = tlv_map.find("03").value();
         convertStringToHex(trans_result, temp_byte);
         show_trans_result(cur_brand, temp_byte.at(0));
     }
 
     //show DF23
-    if(!trans_outcome.isEmpty() || !trans_outcome.isNull())
+    if(tlv_map.find("DF23") != tlv_map.end())
     {
+        QString trans_outcome = tlv_map.find("DF23").value();
         temp_byte.clear();
         convertStringToHex(trans_outcome,temp_byte);
         show_trans_outcome(cur_brand, temp_byte.at(0));
     }
 
     //show  cvm
-    if(!trans_cvm.isEmpty() || !trans_cvm.isNull())
+    if(tlv_map.find("FF8109") != tlv_map.end())
     {
+        QString trans_cvm = tlv_map.find("FF8109").value(); //set for discover
         temp_byte.clear();
         convertStringToHex(trans_cvm, temp_byte);
         switch (temp_byte.at(0))
@@ -1810,14 +1969,16 @@ void XGD_HOST::deal_trans_result()
         }
     }
     //show scpite result
-    if(!script_result.isEmpty() || !script_result.isNull())
+    if(tlv_map.find("DF31") != tlv_map.end())
     {
+        QString script_result = tlv_map.find("DF31").value();
         show_message("Script Result:"+script_result+"\n");
     }
 
     //show oda result
-    if(!oda_result.isEmpty() || !oda_result.isNull())
+    if(tlv_map.find("DFC10B") != tlv_map.end())
     {
+        QString oda_result = tlv_map.find("DFC10B").value();
         show_message("ODA Result:");
         if(oda_result == "00")
         {
@@ -1881,11 +2042,21 @@ void XGD_HOST::deal_trans_result()
         }
     }
 
-    //show transaction outcome for jcb
-    show_trans_outcome(str_outcome);
+    if(cur_brand == "JCB")
+    {
+        if(tlv_map.find("DF8129") != tlv_map.end())
+        {
+            QString str_outcome = tlv_map.find("DF8129").value();
+            show_trans_outcome(str_outcome);            //show transaction outcome for jcb
+        }
 
-    //show data record for jcb
-    show_data_record(data_record);
+        if(tlv_map.find("FF8105") != tlv_map.end())
+        {
+            QString data_record = tlv_map.find("FF8105").value();
+            show_data_record(data_record);         //show data record for jcb
+        }
+    }
+
 
     QMapIterator<QString, QString> it(tlv_map);
     while (it.hasNext())
@@ -3176,4 +3347,60 @@ void XGD_HOST::on_pushButton_DownloadRevokey_clicked()
         it.next();
         qDebug()<<it.key()<<":"<<it.value();
     }
+}
+
+void XGD_HOST::on_pushButton_DownloadDRL_clicked()
+{
+    QDomDocument xml_doc;
+    QFile file;
+    QString config_name = ui->comboBox_DRL->currentText()+".xml";
+
+    file.setFileName(cur_config_dir + "/"+cur_brand+"/DRL/"+config_name);
+    qDebug()<<"DRL file name:"<<file.fileName();
+
+    if(file.open(QIODevice::ReadOnly) != true)
+    {
+        qDebug()<<"Open DRL xml fail!!!"<<endl;
+        return;
+    }
+
+    QString error;
+    int errorline=0;
+    int errorcol=0;
+    if(xml_doc.setContent(&file, &error, &errorline, &errorcol) != true)
+    {
+        qDebug()<<"Parse DRL xml fail,Check file format!!"<<endl;
+        qDebug()<<"Error Message:"<<error;
+        qDebug()<<"Error Line:"<<errorline;
+        qDebug()<<"Error Column:"<<errorcol;
+        return;
+    }
+    file.close();
+
+    show_message("Load DRL:"+config_name+"\n");
+
+    QDomNode rootNode = xml_doc.firstChild();
+    qDebug()<<qPrintable(rootNode.nodeName()+"\n")<<qPrintable(rootNode.nodeValue());
+    //return root element
+    QDomElement rootElement = xml_doc.documentElement();
+    //return first child node of root node
+    QDomNode n = rootElement.firstChild();
+    int i = 0;
+    while(n.isNull() != true)
+    {
+        qDebug()<<"node name:"<<n.nodeName();
+        i+=1;
+        n = n.nextSibling();
+    }
+    qDebug()<<"this xml has DRL:"<<i;
+    config_load_map.find("DRL_Counter").value() = i;
+    config_load_map.find("DRL_Cur_Index").value() = 0;
+
+    QMapIterator<QString, quint8> it(config_load_map);
+    while(it.hasNext())
+    {
+        it.next();
+        qDebug()<<it.key()<<":"<<it.value();
+    }
+
 }
