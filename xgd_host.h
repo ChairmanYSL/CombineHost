@@ -14,6 +14,9 @@
 #include <QStandardItemModel>
 #include <QList>
 #include <QTextCursor>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
 
 #define STX 0x02
 
@@ -120,12 +123,19 @@ private slots:
 
     void on_pushButton_DownloadDRL_clicked();
 
+    void on_pushButton_RCSingle_clicked();
+
 private:
     Ui::XGD_HOST *ui;
     QSerialPort m_serial;
     QString cur_brand;
     QString cur_config_dir;
     QByteArray download_counter;
+    QString cur_IPPort;
+    QString cur_IPAddress;
+    QByteArray dataFromHttp;
+    QTimer timer;
+    QByteArray dataFromTerm;
 
     void init_tlv_map();
     void open_log();
@@ -156,6 +166,7 @@ private:
     void show_trans_outcome(QString outcome);
     void show_ui(QString ui_str);
     void show_data_record(QString data_record);
-
+    void serialRead();
+    void show_uiRequest(QString UIRequest, int step);
 };
 #endif // XGD_HOST_H

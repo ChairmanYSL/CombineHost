@@ -1,4 +1,4 @@
-QT       += core gui xml serialport
+QT       += core gui xml serialport network
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -32,7 +32,7 @@ FORMS += \
 #CONFIG += console
 
 # 版本信息
-VERSION = 0.0.0.1
+VERSION = 0.0.0.2
 # 图标
 RC_ICONS = app.ico
 # 公司名称

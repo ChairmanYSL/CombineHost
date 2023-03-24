@@ -220,6 +220,7 @@ void XGD_HOST::init_config_dir()
             }
         }
     }
+    dataFromTerm.clear();
 }
 
 void XGD_HOST::on_pushButton_ScanSerial_clicked()
@@ -248,13 +249,6 @@ void XGD_HOST::on_pushButton_OpenSerial_clicked()
     {
         m_serial.close();
     }
-    m_serial.open(QIODevice::ReadWrite);
-    if(m_serial.isOpen() != true)
-    {
-        QMessageBox::critical(this, "Error", "Open Serial Port Error!!!");
-        return;
-    }
-    show_message("open "+serialport_name+" Success!\n");
 
     cur_baud_rate = ui->comboBox_BaudRate->currentText();
     m_serial.setBaudRate(cur_baud_rate.toUInt());
@@ -263,8 +257,18 @@ void XGD_HOST::on_pushButton_OpenSerial_clicked()
     m_serial.setParity(QSerialPort::NoParity);
     m_serial.setStopBits(QSerialPort::OneStop);
 
+
+    m_serial.open(QIODevice::ReadWrite);
+    if(m_serial.isOpen() != true)
+    {
+        QMessageBox::critical(this, "Error", "Open Serial Port Error!!!");
+        return;
+    }
+    show_message("open "+serialport_name+" Success!\n");
+
     connect(&m_serial, &QSerialPort::errorOccurred, this, &XGD_HOST::handleError);
     connect(&m_serial, &QSerialPort::readyRead, this, &XGD_HOST::readTermData);
+    connect(&timer, &QTimer::timeout,  this, &XGD_HOST::serialRead);
 }
 
 void XGD_HOST::handleError(QSerialPort::SerialPortError error)
@@ -272,36 +276,66 @@ void XGD_HOST::handleError(QSerialPort::SerialPortError error)
     if(error == QSerialPort::ResourceError)
     {
         QMessageBox::critical(this, "Error", "Serial Erro Code:"+m_serial.errorString());
+        m_serial.clearError();
         m_serial.close();
     }
 }
 
 void XGD_HOST::readTermData()
 {
-    QByteArray term_data = m_serial.readAll();
+//    dataFromTerm.clear();
+    timer.start(40);
+    dataFromTerm.append(m_serial.readAll());
 
-    if(term_data.size() <= 0)
+//    if(term_data.size() <= 0)
+//    {
+//        qDebug()<<"Recv Term Data is null!"<<endl;
+//        QMessageBox::information(this, "info", "Receive Term Data is Null");
+//        return ;
+//    }
+
+//    TraceHexFromByteArray("Recv Term Data" ,term_data);
+
+//    if(term_data.at(0) != 0x02)
+//    {
+//        QMessageBox::critical(this, "Error", "Error protocol header!!!");
+//        return ;
+//    }
+
+//    char temp = term_data.data()[1];
+//    deal_term_data(term_data, (XGD_HOST::MsgType)(quint8)temp);
+}
+
+void XGD_HOST::serialRead()
+{
+    timer.stop();
+    qDebug()<<"dataFromTerm.length:"<<dataFromTerm.length();
+    if(dataFromTerm.length() <= 0)
     {
         qDebug()<<"Recv Term Data is null!"<<endl;
         QMessageBox::information(this, "info", "Receive Term Data is Null");
+        m_serial.clear();
         return ;
     }
 
-    TraceHexFromByteArray("Recv Term Data" ,term_data);
+    TraceHexFromByteArray("Recv Term Data" ,dataFromTerm);
+    m_serial.clear();
 
-    if(term_data.at(0) != 0x02)
+    if(dataFromTerm.at(0) != 0x02)
     {
         QMessageBox::critical(this, "Error", "Error protocol header!!!");
         return ;
     }
 
-    char temp = term_data.data()[1];
-    deal_term_data(term_data, (XGD_HOST::MsgType)(quint8)temp);
+    char temp = dataFromTerm.data()[1];
+    deal_term_data(dataFromTerm, (XGD_HOST::MsgType)(quint8)temp);
+    dataFromTerm.clear();
 }
 
 void XGD_HOST::on_pushButton_ClrMessage_clicked()
 {
     ui->plainTextEdit_Message->clear();
+    m_serial.clear();
 }
 
 void XGD_HOST::tlv2qmap(QString tlv_data, QMap<QString, QString> &p_map)
@@ -333,7 +367,7 @@ void XGD_HOST::tlv2qmap(QString tlv_data, QMap<QString, QString> &p_map)
         }
         qDebug()<<"t_len:"<<t_len;
         Tag_Byte = temp_byte.mid(i, t_len);
-        qDebug()<<"Tag in hex: "<<Tag_Byte;
+        TraceHexFromByteArray("Tag in hex", Tag_Byte);
         //judge L
         i += t_len;
         if((temp_byte.data()[i] & 0x80) == 0x80)
@@ -365,7 +399,7 @@ void XGD_HOST::tlv2qmap(QString tlv_data, QMap<QString, QString> &p_map)
         //judge V
         Value_Byte = temp_byte.mid(i, v_len);
         i+=v_len;
-        qDebug()<<"Value in hex:"<<Value_Byte;
+        TraceHexFromByteArray("Value in hex", Value_Byte);
         Value_str = convertHexToString(Value_Byte);
         Tag_str = convertHexToString(Tag_Byte);
         p_map.insert(Tag_str, Value_str);
@@ -499,7 +533,7 @@ void XGD_HOST::deal_term_data(QByteArray term_data, MsgType msg_type)
     tlv_data = term_data.mid(4,data_len);
 
     qDebug()<<"reveive tlv data len:"<<data_len;
-    qDebug()<<"reveive tlv data :"<<tlv_data;
+    TraceHexFromByteArray("reveive tlv data : ", tlv_data);
 
     tlv_map.clear();
     ret =  tlv2qmap(tlv_data);
@@ -1910,11 +1944,9 @@ void XGD_HOST::on_pushButton_StartTrans_clicked()
     QString str_data;
     QByteArray byte_data;
     str_data = convertHexToString(send_data);
-//    ret = m_serial.write(send_data);
     byte_data = str_data.toLatin1();
     qDebug()<<"send asc data:"<<byte_data;
     ret = m_serial.write(byte_data);
-
 }
 
 void XGD_HOST::deal_trans_result()
@@ -2050,6 +2082,18 @@ void XGD_HOST::deal_trans_result()
             show_trans_outcome(str_outcome);            //show transaction outcome for jcb
         }
 
+        if(tlv_map.find("DF8116") != tlv_map.end())
+        {
+            QString str_uireq = tlv_map.find("DF8116").value();
+            show_uiRequest(str_uireq, 1);
+        }
+
+        if(tlv_map.find("DF8117") != tlv_map.end())
+        {
+            QString str_uireq = tlv_map.find("DF8117").value();
+            show_uiRequest(str_uireq, 2);
+        }
+
         if(tlv_map.find("FF8105") != tlv_map.end())
         {
             QString data_record = tlv_map.find("FF8105").value();
@@ -2062,7 +2106,7 @@ void XGD_HOST::deal_trans_result()
     while (it.hasNext())
     {
         it.next();
-        if(it.key() == "03" || it.key() == "DF23" || it.key() == "FF8109" || it.key() == "DF31" || it.key() == "DFC10B" || it.key() == "DF8129" || it.key() == "FF8105")
+        if(it.key() == "03" || it.key() == "DF23" || it.key() == "FF8109" || it.key() == "DF31" || it.key() == "DFC10B" || it.key() == "DF8129" || it.key() == "FF8105" || it.key() == "DF8116" || it.key() == "DF8117")
         {
             continue;
         }
@@ -2148,24 +2192,28 @@ void XGD_HOST::deal_finance_request()
     send_data.append(STX);
     send_data.append(FINANCE_REQ_SEND);
 
-    send_data.append(0x8A);
-    send_data_len += 1;
     temp_str = ui->lineEdit_HostResCode->text();
-    qDebug()<<"8A from host:"<<temp_str;
-    send_data.append(0x02);
-    send_data_len += 1;
-    send_data.append(temp_str.toLatin1());
-    send_data_len += 2;
+    if(temp_str.isEmpty() == false)
+    {
+        qDebug()<<"8A from host:"<<temp_str;
+        send_data.append(0x8A);
+        send_data_len += 1;
+        send_data.append(0x02);
+        send_data_len += 1;
+        send_data.append(temp_str.toLatin1());
+        send_data_len += 2;
+    }
 
     temp_str = ui->lineEdit_HostAuthData->text();
     if(temp_str.isEmpty() == false)
     {
         send_data.append(0x91);
-        send_data +=1 ;
+        send_data_len +=1 ;
+        qDebug()<<"91 from host:"<<temp_str;
         temp_byte.clear();
         convertStringToHex(temp_str, temp_byte);
         send_data.append(temp_byte.size());
-        send_data += 1;
+        send_data_len += 1;
         send_data.append(temp_byte);
         send_data_len += temp_byte.size();
     }
@@ -2512,13 +2560,20 @@ void XGD_HOST::show_trans_outcome(QString outcome)
     QString str_temp;
     show_message("Transaction Outcome:\n");
 
-    str_temp = outcome.mid(1, 2);
+    str_temp.clear();
+    str_temp = outcome.mid(0, 2);
     if(str_temp.isEmpty() || str_temp.size() < 2)
     {
         qDebug()<<"Show Outcome Status fail!length invalid!"<<endl;
         return;
     }
     show_message("    Outcome Status:");
+    qDebug()<<"Outcome Status:"+str_temp;
+    qDebug()<<"Outcome Status:"+str_temp;
+    qDebug()<<"Outcome Status:"+str_temp;
+    qDebug()<<"Outcome Status:"+str_temp;
+    qDebug()<<"Outcome Status:"+str_temp;
+
     if(str_temp == "10")
     {
         show_message("Approved\n");
@@ -2559,18 +2614,24 @@ void XGD_HOST::show_trans_outcome(QString outcome)
     {
         show_message("Online Request (Present and Hold)\n");
     }
+    else if(str_temp == "FF")
+    {
+        show_message("N/A\n");
+    }
     else
     {
         show_message("Invalid Data\n");
     }
 
-    str_temp = outcome.mid(3, 2);
+    str_temp.clear();
+    str_temp = outcome.mid(2, 2);
     if(str_temp.isEmpty() || str_temp.size() < 2)
     {
         qDebug()<<"Show Start fail!length invalid!"<<endl;
         return;
     }
     show_message("    Start:");
+    qDebug()<<"Start:"+str_temp;
     if(str_temp == "00")
     {
         show_message("A\n");
@@ -2596,13 +2657,15 @@ void XGD_HOST::show_trans_outcome(QString outcome)
         show_message("Invalid Data\n");
     }
 
-    str_temp = outcome.mid(5, 2);
+    str_temp.clear();
+    str_temp = outcome.mid(4, 2);
     if(str_temp.isEmpty() || str_temp.size() < 2)
     {
         qDebug()<<"Show Online Response Data fail!length invalid!"<<endl;
         return;
     }
     show_message("    Online Response Data:");
+    qDebug()<<"Online Response Data:"+str_temp;
     if(str_temp == "10")
     {
         show_message("EMV Data\n");
@@ -2620,12 +2683,14 @@ void XGD_HOST::show_trans_outcome(QString outcome)
         show_message("Invalid Data\n");
     }
 
-    str_temp = outcome.mid(7, 2);
+    str_temp.clear();
+    str_temp = outcome.mid(6, 2);
     if(str_temp.isEmpty() || str_temp.size() < 2)
     {
         qDebug()<<"Show CVM fail!length invalid!"<<endl;
         return;
     }
+    qDebug()<<"CVM:"+str_temp;
     show_message("    CVM:");
     if(str_temp == "00")
     {
@@ -2652,14 +2717,15 @@ void XGD_HOST::show_trans_outcome(QString outcome)
         show_message("Invalid Data\n");
     }
 
-    str_temp = outcome.mid(9, 2);
+    str_temp.clear();
+    str_temp = outcome.mid(8, 2);
     if(str_temp.isEmpty() || str_temp.size() < 2)
     {
         qDebug()<<"Show Flag fail!length invalid!"<<endl;
         return;
     }
     show_message("    Flag:\n");
-
+    qDebug()<<"Flag:"+str_temp;
     QByteArray byte_temp;
     convertStringToHex(str_temp,byte_temp);
 
@@ -2701,16 +2767,18 @@ void XGD_HOST::show_trans_outcome(QString outcome)
     }
     else
     {
-        show_message("        Receipt:no\n");
+        show_message("        Receipt:N/A\n");
     }
 
-    str_temp = outcome.mid(11, 2);
+    str_temp.clear();
+    str_temp = outcome.mid(10, 2);
     if(str_temp.isEmpty() || str_temp.size() < 2)
     {
         qDebug()<<"Show AIP fail!length invalid!"<<endl;
         return;
     }
-    show_message("    AIP:\n");
+    show_message("    AIP:");
+    qDebug()<<"AIP:"+str_temp;
     if(str_temp == "10")
     {
         show_message("Contant Chip\n");
@@ -2724,13 +2792,15 @@ void XGD_HOST::show_trans_outcome(QString outcome)
         show_message("Invalid Data\n");
     }
 
-    str_temp = outcome.mid(13, 2);
+    str_temp.clear();
+    str_temp = outcome.mid(12, 2);
     if(str_temp.isEmpty() || str_temp.size() < 2)
     {
         qDebug()<<"Show Field Off Request fail!length invalid!"<<endl;
         return;
     }
-    show_message("    Field Off Request:\n");
+    show_message("    Field Off Request:");
+    qDebug()<<"Field Off Request:"+str_temp;
     if(str_temp == "FF")
     {
         show_message("N/A\n");
@@ -2740,10 +2810,11 @@ void XGD_HOST::show_trans_outcome(QString outcome)
         show_message(str_temp+"\n");
     }
 
-    str_temp = outcome.mid(15, 4);
+    str_temp.clear();
+    str_temp = outcome.mid(14, 4);
     if(str_temp.isEmpty() || str_temp.size() < 4)
     {
-        qDebug()<<"Show Field Off Request fail!length invalid!"<<endl;
+        qDebug()<<"Show Removal Timeout fail!length invalid!"<<endl;
         return;
     }
     show_message("    Removal Timeout:"+str_temp+"\n");
@@ -3165,12 +3236,14 @@ void XGD_HOST::show_ui(QString ui_str)
         qDebug()<<"parse UI Hold Time fail!length invalid!"<<endl;
         return;
     }
-    show_message("Hold Time:"+temp_str+"\n");
+    show_message("Hold Time:");
+    show_message(temp_str+"\n");
 
     temp_str = ui_str.mid(10, 16);
-    if(temp_str.isEmpty() == false && temp_str.size() == 16)
+    if(temp_str.isEmpty() == false)
     {
-        show_message("Language Preference:"+temp_str+"\n");
+        show_message("    Language Preference:");
+        show_message(temp_str+"\n");
     }
 
     temp_str = ui_str.mid(26, 2);
@@ -3179,23 +3252,30 @@ void XGD_HOST::show_ui(QString ui_str)
         qDebug()<<"parse UI Value Qualifier fail!length invalid!"<<endl;
         return;
     }
-    show_message("Value Qualifier:");
+    show_message("    Value Qualifier:");
     if(temp_str == "20")
     {
         show_message("Balance\n");
     }
+    else
+    {
+        show_message("N/A\n");
+    }
 
     temp_str = ui_str.mid(28, 12);
-    if(temp_str.isEmpty() == false && temp_str.size() == 12)
+    if(temp_str.isEmpty() == false)
     {
-        show_message("Value:"+temp_str+"\n");
+        show_message("    Value:"+temp_str+"\n");
     }
 
     temp_str = ui_str.mid(40, 4);
-    if(temp_str.isEmpty() == false && temp_str.size() == 4)
+    if(temp_str.isEmpty() == false)
     {
-        show_message("Currency Code:"+temp_str+"\n");
+        show_message("    Currency Code:"+temp_str+"\n");
     }
+    show_message("\n");
+    show_message("\n");
+
 }
 
 void XGD_HOST::init_tlv_map()
@@ -3240,7 +3320,7 @@ void XGD_HOST::show_data_record(QString data_record)
         }
         else
         {
-            show_message("    "+it.key()+":"+it.value()+"\n");
+            show_message("    ---"+it.key()+":"+it.value()+"\n");
         }
     }
 }
@@ -3403,4 +3483,240 @@ void XGD_HOST::on_pushButton_DownloadDRL_clicked()
         qDebug()<<it.key()<<":"<<it.value();
     }
 
+}
+
+void XGD_HOST::on_pushButton_RCSingle_clicked()
+{
+    cur_IPAddress = ui->lineEdit_IPAddress->text();
+    cur_IPPort = ui->lineEdit_IPPort->text();
+    QString str_addr = cur_IPAddress+":"+cur_IPPort;
+
+    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
+    QString url = "http://"+str_addr;
+    QNetworkRequest request;
+
+    request.setUrl(url);
+    request.setRawHeader("Message", "STXN");
+    request.setRawHeader("Connection", "keep-alive");
+    request.setRawHeader("Content-Type", "null");
+    request.setRawHeader("Host", str_addr.toLatin1());
+
+    QNetworkReply *reply = manager->get(request);
+    if(dataFromHttp.length())
+    {
+        dataFromHttp.clear();
+    }
+    dataFromHttp = reply->readAll();
+    if(dataFromHttp.length() <= 0)
+    {
+        qDebug()<<"Receive Http Response is NULL!";
+        QMessageBox::critical(this, "Error", "Receive Http Response is NULL!");
+        return ;
+    }
+
+    m_serial.clear();
+    QByteArray sendData;
+
+
+
+
+    m_serial.write(dataFromHttp);
+
+    QDomDocument doc;
+    QString errorMsg;
+    int errorLine, errorColumn;
+    if (doc.setContent(dataFromHttp, &errorMsg, &errorLine, &errorColumn))
+    {
+
+    }
+    else
+    {
+        QMessageBox::critical(this, "Error", "Parse XML error!");
+        qDebug()<<"Parse XML error!";
+        qDebug() << "Error: " << errorMsg << " at line " << errorLine << ", column " << errorColumn;
+    }
+}
+
+void XGD_HOST::show_uiRequest(QString UIRequest, int step)
+{
+    qDebug()<<"start show_uiRequest";
+    qDebug()<<"UIRequest:"<<UIRequest;
+    show_message("\n");
+    QString str_temp;
+    if(step == 1)
+    {
+        show_message("UI Request On Outcome:\n");
+    }
+    else if(step == 2)
+    {
+        show_message("UI Request On Restart:\n");
+    }
+
+    str_temp.clear();
+    str_temp = UIRequest.mid(0, 2);
+    if(str_temp.isEmpty() || str_temp.size() < 2)
+    {
+        qDebug()<<"Show Message Identifier fail!length invalid!"<<endl;
+        return;
+    }
+    show_message("    Message Identifier:");
+    qDebug()<<"Message Identifier:"+str_temp;
+
+    if(str_temp == "03")
+    {
+        show_message("'03'(\"Approved\")\n");
+    }
+    else if(str_temp == "07")
+    {
+        show_message("'07'(\"Not Authorised\")\n");
+    }
+    else if(str_temp == "09")
+    {
+        show_message("'09'(\"Please enter your PIN\")\n");
+    }
+    else if(str_temp == "15")
+    {
+        show_message("'15'(\"Present Card\")\n");
+    }
+    else if(str_temp == "16")
+    {
+        show_message("'16'(\"Processing\")\n");
+    }
+    else if(str_temp == "17")
+    {
+        show_message("'17'(\"Card Read OK\")\n");
+    }
+    else if(str_temp == "19")
+    {
+        show_message("'19'(\"Please Present One Card Only\")\n");
+    }
+    else if(str_temp == "1A")
+    {
+        show_message("'1A'(\"Approved – Please Sign\")\n");
+    }
+    else if(str_temp == "1B")
+    {
+        show_message("'1B'(\"Authorising, Please Wait\")\n");
+    }
+    else if(str_temp == "1C")
+    {
+        show_message("'1C'(\"Insert, Swipe or Try another card\")\n");
+    }
+    else if(str_temp == "1D")
+    {
+        show_message("'1D'(\"Please insert card\")\n");
+    }
+    else if(str_temp == "20")
+    {
+        show_message("'20'(\"See Phone for Instructions\")\n");
+    }
+    else if(str_temp == "21")
+    {
+        show_message("'21'(\"Present Card Again\")\n");
+    }
+    else if(str_temp == "FF")
+    {
+        show_message("N/A\n");
+    }
+    else
+    {
+        show_message("Invalid Data\n");
+    }
+
+    str_temp.clear();
+    str_temp = UIRequest.mid(2, 2);
+    if(str_temp.isEmpty() || str_temp.size() < 2)
+    {
+        qDebug()<<"Show Status fail!length invalid!"<<endl;
+        return;
+    }
+    show_message("    Status:");
+    qDebug()<<"Status:"+str_temp;
+    if(str_temp == "00")
+    {
+        show_message("NOT READY\n");
+    }
+    else if(str_temp == "01")
+    {
+        show_message("IDLE\n");
+    }
+    else if(str_temp == "02")
+    {
+        show_message("READY TO READ\n");
+    }
+    else if(str_temp == "03")
+    {
+        show_message("PROCESSING\n");
+    }
+    else if(str_temp == "04")
+    {
+        show_message("CARD READ SUCCESSFULLY\n");
+    }
+    else if(str_temp == "05")
+    {
+        show_message("PROCESSING ERROR\n");
+    }
+    else if(str_temp == "FF")
+    {
+        show_message("N/A\n");
+    }
+    else
+    {
+        show_message("Invalid Data\n");
+    }
+
+    str_temp.clear();
+    str_temp = UIRequest.mid(4, 6);
+    if(str_temp.isEmpty() || str_temp.size() < 6)
+    {
+        qDebug()<<"Show Hold Time fail!length invalid!"<<endl;
+        return;
+    }
+    show_message("    Hold Time:"+str_temp+"\n");
+
+    str_temp.clear();
+    str_temp = UIRequest.mid(10, 16);
+    if(str_temp.isEmpty() || str_temp.size() < 16)
+    {
+        qDebug()<<"Show Language Preference fail!length invalid!"<<endl;
+        return;
+    }
+    qDebug()<<"Language Preference:"+str_temp;
+    show_message("    Language Preference:"+str_temp+"\n");
+
+    str_temp.clear();
+    str_temp = UIRequest.mid(26, 2);
+    if(str_temp.isEmpty() || str_temp.size() < 2)
+    {
+        qDebug()<<"Show Value Qualifier fail!length invalid!"<<endl;
+        return;
+    }
+    qDebug()<<"Value Qualifier:"+str_temp;
+    if(str_temp == "20")
+    {
+        show_message("    Value Qualifier:Balance\n");
+    }
+
+    str_temp.clear();
+    str_temp = UIRequest.mid(28, 12);
+    if(str_temp.isEmpty() || str_temp.size() < 12)
+    {
+        qDebug()<<"Show Value fail!length invalid!"<<endl;
+        return;
+    }
+    qDebug()<<"Value:"+str_temp;
+    if(str_temp != "FFFFFFFFFFFF")
+    {
+        show_message("    Value:"+str_temp+"\n");
+    }
+
+    str_temp.clear();
+    str_temp = UIRequest.mid(40, 4);
+    if(str_temp.isEmpty() || str_temp.size() < 4)
+    {
+        qDebug()<<"Show Currency Code fail!length invalid!"<<endl;
+        return;
+    }
+    qDebug()<<"Currency Code:"+str_temp;
+    show_message("    Currency Code:"+str_temp+"\n");
 }
