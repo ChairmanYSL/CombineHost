@@ -3501,40 +3501,56 @@ void XGD_HOST::on_pushButton_RCSingle_clicked()
     request.setRawHeader("Content-Type", "null");
     request.setRawHeader("Host", str_addr.toLatin1());
 
-    QNetworkReply *reply = manager->get(request);
-    if(dataFromHttp.length())
+    qDebug()<<"URL:"<<url;
+    QList<QByteArray> headerList = request.rawHeaderList();
+    QListIterator<QByteArray> it(headerList);
+    for(it.toFront(); it.hasNext();)
     {
-        dataFromHttp.clear();
-    }
-    dataFromHttp = reply->readAll();
-    if(dataFromHttp.length() <= 0)
-    {
-        qDebug()<<"Receive Http Response is NULL!";
-        QMessageBox::critical(this, "Error", "Receive Http Response is NULL!");
-        return ;
+        qDebug() << it.next()<<endl;
     }
 
-    m_serial.clear();
-    QByteArray sendData;
+    connect(manager, &QNetworkAccessManager::finished, this, &XGD_HOST::deal_http_get);
+    manager->get(request);
+//    QNetworkReply *reply = manager->get(request);
+//    if(dataFromHttp.length() > 0)
+//    {
+//        dataFromHttp.clear();
+//    }
+//    dataFromHttp = reply->readAll();
+//    if(dataFromHttp.length() <= 0)
+//    {
+//        qDebug()<<"Receive Http Response is NULL!";
+//        QMessageBox::critical(this, "Error", "Receive Http Response is NULL!");
+//        return ;
+//    }
+//    qDebug()<<"download xml from http:"<<dataFromHttp;
+//    m_serial.clear();
+//    QByteArray sendData;
+//    char high = (dataFromHttp.length()>>8) & 0xFF;
+//    char low = (dataFromHttp.length()) & 0xFF;
 
 
+//    sendData[0] = STX;
+//    sendData[1] = RC_DOWNLOAD_CONFIG;
+//    sendData[2] = high;
+//    sendData[3] = low;
+//    sendData.append(dataFromHttp);
 
+//    m_serial.write(dataFromHttp);
 
-    m_serial.write(dataFromHttp);
+//    QDomDocument doc;
+//    QString errorMsg;
+//    int errorLine, errorColumn;
+//    if (doc.setContent(dataFromHttp, &errorMsg, &errorLine, &errorColumn))
+//    {
 
-    QDomDocument doc;
-    QString errorMsg;
-    int errorLine, errorColumn;
-    if (doc.setContent(dataFromHttp, &errorMsg, &errorLine, &errorColumn))
-    {
-
-    }
-    else
-    {
-        QMessageBox::critical(this, "Error", "Parse XML error!");
-        qDebug()<<"Parse XML error!";
-        qDebug() << "Error: " << errorMsg << " at line " << errorLine << ", column " << errorColumn;
-    }
+//    }
+//    else
+//    {
+//        QMessageBox::critical(this, "Error", "Parse XML error!");
+//        qDebug()<<"Parse XML error!";
+//        qDebug() << "Error: " << errorMsg << " at line " << errorLine << ", column " << errorColumn;
+//    }
 }
 
 void XGD_HOST::show_uiRequest(QString UIRequest, int step)
@@ -3719,4 +3735,43 @@ void XGD_HOST::show_uiRequest(QString UIRequest, int step)
     }
     qDebug()<<"Currency Code:"+str_temp;
     show_message("    Currency Code:"+str_temp+"\n");
+}
+
+void XGD_HOST::deal_http_get(QNetworkReply *reply)
+{
+    if(reply->error() != QNetworkReply::NoError)
+    {
+        qDebug()<<"reply error:"<<reply->errorString();
+        QMessageBox::critical(this, "Error", "receive http response error");
+        return;
+    }
+    else
+    {
+        if(dataFromHttp.length() > 0)
+        {
+            dataFromHttp.clear();
+        }
+        dataFromHttp = reply->readAll();
+
+        if(dataFromHttp.length() <= 0)
+        {
+            qDebug()<<"Receive Http Response is NULL!";
+            QMessageBox::critical(this, "Error", "Receive Http Response is NULL!");
+            return ;
+        }
+
+        qDebug()<<"download xml from http:"<<dataFromHttp;
+        m_serial.clear();
+        QByteArray sendData;
+        char high = (dataFromHttp.length()>>8) & 0xFF;
+        char low = (dataFromHttp.length()) & 0xFF;
+
+        sendData[0] = STX;
+        sendData[1] = RC_DOWNLOAD_CONFIG;
+        sendData[2] = high;
+        sendData[3] = low;
+        sendData.append(dataFromHttp);
+
+        m_serial.write(sendData);
+    }
 }

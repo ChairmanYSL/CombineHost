@@ -41,6 +41,7 @@ public:
         ADVICE_SEND,
         REDO_SEND,
         FIALFLOW_UPLOAD_SEND,
+        RC_DOWNLOAD_CONFIG=10,
 
         FINANCE_REQ_RECV = 65, //0x41
         AUTHORIZE_REQ_RECV,
@@ -71,6 +72,7 @@ public:
         ELECCHIP_ELECSIGN_RECV,
         DRL_DOWNLOAD_RECV,
         TERM_OUTCOME_RECV,
+        RC_UPLOAD_RESULT,
     };
 
     QMap<QString, QString> tlv_map;   //hashmap,function is similar to avl tree in emvbase,it provides key-value data-struct to save tags
@@ -168,5 +170,6 @@ private:
     void show_data_record(QString data_record);
     void serialRead();
     void show_uiRequest(QString UIRequest, int step);
+    void deal_http_get(QNetworkReply *reply);
 };
 #endif // XGD_HOST_H
