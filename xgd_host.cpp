@@ -59,11 +59,40 @@ XGD_HOST::XGD_HOST(QWidget *parent)
 
     connect(ui->action_Open, &QAction::triggered, this, &XGD_HOST::open_log);
     connect(ui->action_Close, &QAction::triggered, this, &XGD_HOST::close_log);
+
+    resend = ui->lineEdit_Resend->text().toUInt();
+    qDebug()<<"resend from wiget:"<<resend;
+
+    //Init IP Address
+    QList<QNetworkInterface> interfaces = QNetworkInterface::allInterfaces();
+
+    foreach (QNetworkInterface interface, interfaces) {
+        QList<QNetworkAddressEntry> entries = interface.addressEntries();
+        foreach (QNetworkAddressEntry entry, entries) {
+            if (entry.ip().protocol() == QAbstractSocket::IPv4Protocol) {
+                ui->comboBox_IPAddress->addItem(entry.ip().toString());
+                qDebug() << "Interface: " << interface.humanReadableName();
+                qDebug() << "IPv4 Address: " << entry.ip().toString();
+                qDebug() << "--------------------------------------";
+                // 只显示第一个 IPv4 地址，如需显示所有 IPv4 地址，可以在此处删除 break 语句
+                //break;
+            }
+        }
+    }
+
+    ui->comboBox_IPAddress->setCurrentIndex(0);
 }
 
 XGD_HOST::~XGD_HOST()
 {
-    m_serial.close();
+    if(m_serial.isOpen())
+    {
+        m_serial.close();
+    }
+    if(m_tcpserver.isServerListening() || m_tcpserver.isSocketOpen())
+    {
+        m_tcpserver.closeConnection();
+    }
     delete ui;
 }
 
@@ -269,6 +298,8 @@ void XGD_HOST::on_pushButton_OpenSerial_clicked()
     connect(&m_serial, &QSerialPort::errorOccurred, this, &XGD_HOST::handleError);
     connect(&m_serial, &QSerialPort::readyRead, this, &XGD_HOST::readTermData);
     connect(&timer, &QTimer::timeout,  this, &XGD_HOST::serialRead);
+
+    commuType = COMMU_SERIAL;
 }
 
 void XGD_HOST::handleError(QSerialPort::SerialPortError error)
@@ -283,27 +314,8 @@ void XGD_HOST::handleError(QSerialPort::SerialPortError error)
 
 void XGD_HOST::readTermData()
 {
-//    dataFromTerm.clear();
     timer.start(40);
     dataFromTerm.append(m_serial.readAll());
-
-//    if(term_data.size() <= 0)
-//    {
-//        qDebug()<<"Recv Term Data is null!"<<endl;
-//        QMessageBox::information(this, "info", "Receive Term Data is Null");
-//        return ;
-//    }
-
-//    TraceHexFromByteArray("Recv Term Data" ,term_data);
-
-//    if(term_data.at(0) != 0x02)
-//    {
-//        QMessageBox::critical(this, "Error", "Error protocol header!!!");
-//        return ;
-//    }
-
-//    char temp = term_data.data()[1];
-//    deal_term_data(term_data, (XGD_HOST::MsgType)(quint8)temp);
 }
 
 void XGD_HOST::serialRead()
@@ -496,34 +508,36 @@ void XGD_HOST::deal_term_data(QByteArray term_data, MsgType msg_type)
 
     qDebug()<<"msg_type:"<<msg_type;
 
+    //this item don't need parse tlv
     switch (msg_type)
     {
         case AID_DOWNLOAD_RECV:
             deal_aid_download();
-            return ;    //this item don't need parse tlv
+            return ;
         case CAPK_DOWNLOAD_RECV:
             deal_capk_download();
-            return ;    //this item don't need parse tlv
+            return ;
         case SIMDATA_DOWNLOAD_RECV:
             deal_simdata_download();
-            return ;    //this item don't need parse tlv
+            return ;
         case BLACKLIST_DOWNLOAD_RECV:
             deal_blacklist_download();
-            return ;    //this item don't need parse tlv
+            return ;
         case REVOKEY_DOWNLOAD_RECV:
             deal_revokey_download();
-            return ;    //this item don't need parse tlv
+            return ;
         case DRL_DOWNLOAD_RECV:
             deal_drl_download();
-            return ;    //this item don't need parse tlv
+            return ;
         case TRANS_REQ_RECV:
             deal_trans_request();
-            return ;    //this item don't need parse tlv
+            return ;
         case ADVICE_RECV:
-//            show_message("Advice Message:\n");
             deal_advice(term_data);
             return ;
-
+        case RC_UPLOAD_RESULT:
+            deal_http_post(term_data);
+            return;
         default:
             break;
     }
@@ -621,7 +635,16 @@ void XGD_HOST::deal_simdata_download()
         convertStringToHex(endLine, temp);
         send_data.append(temp);
         TraceHexFromByteArray("send data:", send_data);
-        m_serial.write(send_data);
+        int ret=0;
+        if(commuType == COMMU_SERIAL)
+        {
+            ret = m_serial.write(send_data);
+        }
+        else if(commuType == COMMU_TCP)
+        {
+            ret = m_tcpserver.sendData(send_data);
+        }
+        qDebug()<<"write data ret:"<<ret;
         config_load_map.find("SimData_Cur_Index").value() = 0; //reset index
         return;
     }
@@ -705,8 +728,15 @@ void XGD_HOST::deal_simdata_download()
     show_message("\n");
     show_message("\n");
 
-    int ret;
-    ret = m_serial.write(send_data);
+    int ret=0;
+    if(commuType == COMMU_SERIAL)
+    {
+        ret = m_serial.write(send_data);
+    }
+    else if(commuType == COMMU_TCP)
+    {
+        ret = m_tcpserver.sendData(send_data);
+    }
     qDebug()<<"write data act num:"<<ret;
     config_load_map.find("SimData_Cur_Index").value() += 1;
 }
@@ -731,7 +761,16 @@ void XGD_HOST::deal_revokey_download()
         convertStringToHex(endLine, temp);
         send_data.append(temp);
         TraceHexFromByteArray("send data:", send_data);
-        m_serial.write(send_data);
+        int ret=0;
+        if(commuType == COMMU_SERIAL)
+        {
+            ret = m_serial.write(send_data);
+        }
+        else if(commuType == COMMU_TCP)
+        {
+            ret = m_tcpserver.sendData(send_data);
+        }
+        qDebug()<<"write data ret:"<<ret;
         config_load_map.find("Revokey_Cur_Index").value() = 0; //reset index
         return;
     }
@@ -815,8 +854,15 @@ void XGD_HOST::deal_revokey_download()
     show_message("\n");
     show_message("\n");
 
-    int ret;
-    ret = m_serial.write(send_data);
+    int ret=0;
+    if(commuType == COMMU_SERIAL)
+    {
+        ret = m_serial.write(send_data);
+    }
+    else if(commuType == COMMU_TCP)
+    {
+        ret = m_tcpserver.sendData(send_data);
+    }
     qDebug()<<"write data act num:"<<ret;
     config_load_map.find("Revokey_Cur_Index").value() += 1;
 }
@@ -841,7 +887,16 @@ void XGD_HOST::deal_blacklist_download()
         convertStringToHex(endLine, temp);
         send_data.append(temp);
         TraceHexFromByteArray("send data:", send_data);
-        m_serial.write(send_data);
+        int ret=0;
+        if(commuType == COMMU_SERIAL)
+        {
+            ret = m_serial.write(send_data);
+        }
+        else if(commuType == COMMU_TCP)
+        {
+            ret = m_tcpserver.sendData(send_data);
+        }
+        qDebug()<<"write data ret:"<<ret;
         config_load_map.find("ExecptionFile_Cur_Index").value() = 0; //reset index
         return;
     }
@@ -926,8 +981,15 @@ void XGD_HOST::deal_blacklist_download()
     show_message("\n");
     show_message("\n");
 
-    int ret;
-    ret = m_serial.write(send_data);
+    int ret=0;
+    if(commuType == COMMU_SERIAL)
+    {
+        ret = m_serial.write(send_data);
+    }
+    else if(commuType == COMMU_TCP)
+    {
+        ret = m_tcpserver.sendData(send_data);
+    }
     qDebug()<<"write data act num:"<<ret;
     config_load_map.find("ExecptionFile_Cur_Index").value() += 1;
 }
@@ -952,7 +1014,16 @@ void XGD_HOST::deal_drl_download()
         convertStringToHex(endLine, temp);
         send_data.append(temp);
         TraceHexFromByteArray("send data:", send_data);
-        m_serial.write(send_data);
+        int ret=0;
+        if(commuType == COMMU_SERIAL)
+        {
+            ret = m_serial.write(send_data);
+        }
+        else if(commuType == COMMU_TCP)
+        {
+            ret = m_tcpserver.sendData(send_data);
+        }
+        qDebug()<<"write data ret:"<<ret;
         config_load_map.find("DRL_Cur_Index").value() = 0; //reset index
         return;
     }
@@ -1036,8 +1107,15 @@ void XGD_HOST::deal_drl_download()
     show_message("\n");
     show_message("\n");
 
-    int ret;
-    ret = m_serial.write(send_data);
+    int ret=0;
+    if(commuType == COMMU_SERIAL)
+    {
+        ret = m_serial.write(send_data);
+    }
+    else if(commuType == COMMU_TCP)
+    {
+        ret = m_tcpserver.sendData(send_data);
+    }
     qDebug()<<"write data act num:"<<ret;
     config_load_map.find("DRL_Cur_Index").value() += 1;
 }
@@ -1062,7 +1140,16 @@ void XGD_HOST::deal_capk_download()
         convertStringToHex(endLine, temp);
         send_data.append(temp);
         TraceHexFromByteArray("send data:", send_data);
-        m_serial.write(send_data);
+        int ret=0;
+        if(commuType == COMMU_SERIAL)
+        {
+            ret = m_serial.write(send_data);
+        }
+        else if(commuType == COMMU_TCP)
+        {
+            ret = m_tcpserver.sendData(send_data);
+        }
+        qDebug()<<"write data ret:"<<ret;
         config_load_map.find("CAPK_Cur_Index").value() = 0; //reset index
         return;
     }
@@ -1148,8 +1235,15 @@ void XGD_HOST::deal_capk_download()
     show_message("\n");
     show_message("\n");
 
-    int ret;
-    ret = m_serial.write(send_data);
+    int ret=0;
+    if(commuType == COMMU_SERIAL)
+    {
+        ret = m_serial.write(send_data);
+    }
+    else if(commuType == COMMU_TCP)
+    {
+        ret = m_tcpserver.sendData(send_data);
+    }
     qDebug()<<"write data act num:"<<ret;
     config_load_map.find("CAPK_Cur_Index").value() += 1;
 }
@@ -1174,7 +1268,16 @@ void XGD_HOST::deal_aid_download()
         convertStringToHex(endLine, temp);
         send_data.append(temp);
         TraceHexFromByteArray("send data:", send_data);
-        m_serial.write(send_data);
+        int ret=0;
+        if(commuType == COMMU_SERIAL)
+        {
+            ret = m_serial.write(send_data);
+        }
+        else if(commuType == COMMU_TCP)
+        {
+            ret = m_tcpserver.sendData(send_data);
+        }   
+        qDebug()<<"write data ret:"<<ret;
         config_load_map.find("AID_Cur_Index").value() = 0; //reset index
         return;
     }
@@ -1258,8 +1361,15 @@ void XGD_HOST::deal_aid_download()
     show_message("\n");
     show_message("\n");
 
-    int ret;
-    ret = m_serial.write(send_data);
+    int ret=0;
+    if(commuType == COMMU_SERIAL)
+    {
+        ret = m_serial.write(send_data);
+    }
+    else if(commuType == COMMU_TCP)
+    {
+        ret = m_tcpserver.sendData(send_data);
+    }
     qDebug()<<"write data act num:"<<ret;
     config_load_map.find("AID_Cur_Index").value() += 1;
 }
@@ -1773,8 +1883,16 @@ void XGD_HOST::deal_trans_request()
     show_message("\n");
     show_message("\n");
 
-    int ret = 0;
-    ret = m_serial.write(send_data);
+    int ret=0;
+    if(commuType == COMMU_SERIAL)
+    {
+        ret = m_serial.write(send_data);
+    }
+    else if(commuType == COMMU_TCP)
+    {
+        ret = m_tcpserver.sendData(send_data);
+    }
+    qDebug()<<"write data ret:"<<ret;
 }
 
 void XGD_HOST::on_pushButton_StartTrans_clicked()
@@ -1946,7 +2064,15 @@ void XGD_HOST::on_pushButton_StartTrans_clicked()
     str_data = convertHexToString(send_data);
     byte_data = str_data.toLatin1();
     qDebug()<<"send asc data:"<<byte_data;
-    ret = m_serial.write(byte_data);
+    if(commuType == COMMU_SERIAL)
+    {
+        ret = m_serial.write(send_data);
+    }
+    else if(commuType == COMMU_TCP)
+    {
+        ret = m_tcpserver.sendData(send_data);
+    }
+    qDebug()<<"write data ret:"<<ret;
 }
 
 void XGD_HOST::deal_trans_result()
@@ -2074,7 +2200,7 @@ void XGD_HOST::deal_trans_result()
         }
     }
 
-    if(cur_brand == "JCB")
+    if(cur_brand == "JCB" || cur_brand == "PURE")
     {
         if(tlv_map.find("DF8129") != tlv_map.end())
         {
@@ -2132,8 +2258,16 @@ void XGD_HOST::deal_trans_result()
     convertStringToHex(temp_str,temp_byte);
     send_data.append(temp_byte);
 
-    int ret;
-    ret = m_serial.write(send_data);
+    int ret=0;
+    if(commuType == COMMU_SERIAL)
+    {
+        ret = m_serial.write(send_data);
+    }
+    else if(commuType == COMMU_TCP)
+    {
+        ret = m_tcpserver.sendData(send_data);
+    }
+
     qDebug()<<"act write byte: "<<ret;
 }
 
@@ -2234,8 +2368,15 @@ void XGD_HOST::deal_finance_request()
 
     TraceHexFromByteArray("send data:", send_data);
 
-    int ret;
-    ret = m_serial.write(send_data);
+    int ret=0;
+    if(commuType == COMMU_SERIAL)
+    {
+        ret = m_serial.write(send_data);
+    }
+    else if(commuType == COMMU_TCP)
+    {
+        ret = m_tcpserver.sendData(send_data);
+    }
     qDebug()<<"act write byte: "<<ret;
 
 }
@@ -2420,8 +2561,15 @@ void XGD_HOST::deal_finance_confirm()
     convertStringToHex(temp_str,temp_byte);
     send_data.append(temp_byte);
 
-    int ret;
-    ret = m_serial.write(send_data);
+    int ret=0;
+    if(commuType == COMMU_SERIAL)
+    {
+        ret = m_serial.write(send_data);
+    }
+    else if(commuType == COMMU_TCP)
+    {
+        ret = m_tcpserver.sendData(send_data);
+    }
     qDebug()<<"act write serial:"<<ret;
 }
 
@@ -2598,6 +2746,10 @@ void XGD_HOST::show_trans_outcome(QString outcome)
     {
         show_message("Try Another Interface\n");
     }
+    else if(str_temp == "70")
+    {
+        show_message("Try Again\n");
+    }
     else if(str_temp == "A0")
     {
         show_message("End Application (with restart – communication error)\n");
@@ -2613,6 +2765,10 @@ void XGD_HOST::show_trans_outcome(QString outcome)
     else if(str_temp == "D0")
     {
         show_message("Online Request (Present and Hold)\n");
+    }
+    else if(str_temp == "F0")
+    {
+        show_message("Online Request (No Additional Tap)");
     }
     else if(str_temp == "FF")
     {
@@ -3001,8 +3157,15 @@ void XGD_HOST::deal_authorize_request()
 
     TraceHexFromByteArray("send data:", send_data);
 
-    int ret;
-    ret = m_serial.write(send_data);
+    int ret=0;
+    if(commuType == COMMU_SERIAL)
+    {
+        ret = m_serial.write(send_data);
+    }
+    else if(commuType == COMMU_TCP)
+    {
+        ret = m_tcpserver.sendData(send_data);
+    }
     qDebug()<<"act write byte: "<<ret;
 }
 
@@ -3076,8 +3239,15 @@ void XGD_HOST::deal_batch_upload()
     convertStringToHex(temp_str,temp_byte);
     send_data.append(temp_byte);
 
-    int ret;
-    ret = m_serial.write(send_data);
+    int ret=0;
+    if(commuType == COMMU_SERIAL)
+    {
+        ret = m_serial.write(send_data);
+    }
+    else if(commuType == COMMU_TCP)
+    {
+        ret = m_tcpserver.sendData(send_data);
+    }
     qDebug()<<"act write serial:"<<ret;
 }
 
@@ -3085,7 +3255,14 @@ void XGD_HOST::deal_term_outcome()
 {
     QString UIReqOnOutcome = tlv_map.find("DF8116").value();
     QString UIReqOnRestart = tlv_map.find("DF8117").value();
+    QString Outcome = tlv_map.find("DF8129").value();
     QByteArray temp_byte;
+
+    if(Outcome.isEmpty() == false)
+    {
+        show_message("Outcome Message:");
+        show_trans_outcome(Outcome);
+    }
 
     if(UIReqOnOutcome.isEmpty() == false)
     {
@@ -3145,6 +3322,10 @@ void XGD_HOST::show_ui(QString ui_str)
     {
         show_message("Please enter your PIN\n");
     }
+    else if(temp_str == "10")
+    {
+        show_message("Please remove card\n");
+    }
     else if(temp_str == "15")
     {
         show_message("Present Card\n");
@@ -3156,6 +3337,10 @@ void XGD_HOST::show_ui(QString ui_str)
     else if(temp_str == "17")
     {
         show_message("Card Read OK\n");
+    }
+    else if(temp_str == "18")
+    {
+        show_message("Please insert or swipe card\n");
     }
     else if(temp_str == "19")
     {
@@ -3487,7 +3672,7 @@ void XGD_HOST::on_pushButton_DownloadDRL_clicked()
 
 void XGD_HOST::on_pushButton_RCSingle_clicked()
 {
-    cur_IPAddress = ui->lineEdit_IPAddress->text();
+    cur_IPAddress = ui->comboBox_IPAddress->currentText();
     cur_IPPort = ui->lineEdit_IPPort->text();
     QString str_addr = cur_IPAddress+":"+cur_IPPort;
 
@@ -3511,46 +3696,6 @@ void XGD_HOST::on_pushButton_RCSingle_clicked()
 
     connect(manager, &QNetworkAccessManager::finished, this, &XGD_HOST::deal_http_get);
     manager->get(request);
-//    QNetworkReply *reply = manager->get(request);
-//    if(dataFromHttp.length() > 0)
-//    {
-//        dataFromHttp.clear();
-//    }
-//    dataFromHttp = reply->readAll();
-//    if(dataFromHttp.length() <= 0)
-//    {
-//        qDebug()<<"Receive Http Response is NULL!";
-//        QMessageBox::critical(this, "Error", "Receive Http Response is NULL!");
-//        return ;
-//    }
-//    qDebug()<<"download xml from http:"<<dataFromHttp;
-//    m_serial.clear();
-//    QByteArray sendData;
-//    char high = (dataFromHttp.length()>>8) & 0xFF;
-//    char low = (dataFromHttp.length()) & 0xFF;
-
-
-//    sendData[0] = STX;
-//    sendData[1] = RC_DOWNLOAD_CONFIG;
-//    sendData[2] = high;
-//    sendData[3] = low;
-//    sendData.append(dataFromHttp);
-
-//    m_serial.write(dataFromHttp);
-
-//    QDomDocument doc;
-//    QString errorMsg;
-//    int errorLine, errorColumn;
-//    if (doc.setContent(dataFromHttp, &errorMsg, &errorLine, &errorColumn))
-//    {
-
-//    }
-//    else
-//    {
-//        QMessageBox::critical(this, "Error", "Parse XML error!");
-//        qDebug()<<"Parse XML error!";
-//        qDebug() << "Error: " << errorMsg << " at line " << errorLine << ", column " << errorColumn;
-//    }
 }
 
 void XGD_HOST::show_uiRequest(QString UIRequest, int step)
@@ -3739,6 +3884,13 @@ void XGD_HOST::show_uiRequest(QString UIRequest, int step)
 
 void XGD_HOST::deal_http_get(QNetworkReply *reply)
 {
+    int statusCode;
+
+    if(AutoFlag)
+    {
+        timer.stop();
+    }
+
     if(reply->error() != QNetworkReply::NoError)
     {
         qDebug()<<"reply error:"<<reply->errorString();
@@ -3751,6 +3903,8 @@ void XGD_HOST::deal_http_get(QNetworkReply *reply)
         {
             dataFromHttp.clear();
         }
+        statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        qDebug()<<"http get status code:"<<statusCode;
         dataFromHttp = reply->readAll();
 
         if(dataFromHttp.length() <= 0)
@@ -3759,6 +3913,14 @@ void XGD_HOST::deal_http_get(QNetworkReply *reply)
             QMessageBox::critical(this, "Error", "Receive Http Response is NULL!");
             return ;
         }
+        else if(statusCode != 200)
+        {
+            qDebug()<<"Receive Http status Code != 200";
+            QMessageBox::critical(this, "Error", "Receive Http status Code Error!");
+            return ;
+        }
+
+        reply->deleteLater();
 
         qDebug()<<"download xml from http:"<<dataFromHttp;
         m_serial.clear();
@@ -3772,6 +3934,245 @@ void XGD_HOST::deal_http_get(QNetworkReply *reply)
         sendData[3] = low;
         sendData.append(dataFromHttp);
 
-        m_serial.write(sendData);
+        int ret=0;
+        if(commuType == COMMU_SERIAL)
+        {
+            ret = m_serial.write(sendData);
+        }
+        else if(commuType == COMMU_TCP)
+        {
+            ret = m_tcpserver.sendData(sendData);
+        }
+        qDebug()<<"write data ret:"<<ret;
+    }
+}
+
+void XGD_HOST::deal_http_post(QByteArray dataSend)
+{
+    cur_IPAddress = ui->comboBox_IPAddress->currentText();
+    cur_IPPort = ui->lineEdit_IPPort->text();
+    QString str_addr = cur_IPAddress+":"+cur_IPPort;
+    int statusCode;
+
+    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
+    QString url = "http://"+str_addr;
+    QNetworkRequest request;
+
+    request.setUrl(url);
+    request.setRawHeader("Message", "ETXN");
+    request.setRawHeader("Connection", "keep-alive");
+    request.setRawHeader("Content-Type", "text/plain");
+    request.setRawHeader("Host", str_addr.toLatin1());
+
+    qDebug()<<"URL:"<<url;
+    QList<QByteArray> headerList = request.rawHeaderList();
+    QListIterator<QByteArray> it(headerList);
+    for(it.toFront(); it.hasNext();)
+    {
+        QByteArray headerName =it.next();
+        qDebug() << headerName<<":"<<request.rawHeader(headerName);
+    }
+
+    qDebug()<<"http post content:"<<dataSend.mid(4, dataSend.length()-4);
+
+    QNetworkReply *reply=manager->post(request, dataSend.mid(4, dataSend.length()-4));
+
+    QEventLoop eventLoop;
+    connect(manager, &QNetworkAccessManager::finished, &eventLoop, &QEventLoop::quit);
+    eventLoop.exec();
+
+    statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    qDebug()<<"http post status Code:"<<statusCode;
+    if(statusCode != 200)
+    {
+        qDebug()<<"Receive Http status Code != 200";
+        QMessageBox::critical(this, "Error", "Receive Http status Code Error!");
+        reply->deleteLater();
+        return;
+    }
+    reply->deleteLater();
+
+    if(AutoFlag)
+    {
+        QThread::sleep(1);
+        on_pushButton_RCBatch_clicked();
+    }
+}
+
+void XGD_HOST::on_pushButton_RCBatch_clicked()
+{
+    int timeDelay = ui->lineEdit_TimeDelay->text().toUInt();
+    AutoFlag = true;
+    batchReceive = false;
+
+    send_http_get();
+
+    timer.start(timeDelay);
+    connect(&timer, &QTimer::timeout, this, &XGD_HOST::resend_http_get);
+
+    send_http_get();
+}
+
+int XGD_HOST::send_http_get()
+{
+    cur_IPAddress = ui->comboBox_IPAddress->currentText();
+    cur_IPPort = ui->lineEdit_IPPort->text();
+    QString str_addr = cur_IPAddress+":"+cur_IPPort;
+
+    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
+    QString url = "http://"+str_addr;
+    QNetworkRequest request;
+
+    request.setUrl(url);
+    request.setRawHeader("Message", "STXN");
+    request.setRawHeader("Connection", "keep-alive");
+    request.setRawHeader("Content-Type", "null");
+    request.setRawHeader("Host", str_addr.toLatin1());
+
+    qDebug()<<"URL:"<<url;
+    QList<QByteArray> headerList = request.rawHeaderList();
+    QListIterator<QByteArray> it(headerList);
+    for(it.toFront(); it.hasNext();)
+    {
+        qDebug() << it.next()<<endl;
+    }
+
+    connect(manager, &QNetworkAccessManager::finished, this, &XGD_HOST::deal_http_get);
+    manager->get(request);
+    return 0;
+}
+
+void XGD_HOST::resend_http_get()
+{
+    if(!batchReceive)
+    {
+        qDebug() << "Timeout: no response received within"<<ui->lineEdit_TimeDelay->text().toUInt()<<"second";
+        if(resend >0)
+        {
+            send_http_get();
+            resend--;
+            qDebug() << "resend times left: "<<resend;
+        }
+        else
+        {
+            timer.stop();
+            qDebug() << "resend time run out!quit batch test!";
+            show_message("resend time run out!quit batch test!\n");
+            resend = ui->lineEdit_Resend->text().toUInt();
+            AutoFlag = false;
+        }
+    }
+
+}
+
+void XGD_HOST::deal_http_trace(QNetworkReply *reply)
+{
+    int statusCode;
+
+    if(reply->error() != QNetworkReply::NoError)
+    {
+        qDebug()<<"reply error:"<<reply->errorString();
+        QMessageBox::critical(this, "Error", "receive http response error");
+        return;
+    }
+    else
+    {
+        statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        qDebug()<<"http TRACE status code:"<<statusCode;
+        show_message("http TRACE status code:"+QString::number(statusCode));
+    }
+}
+
+void XGD_HOST::on_pushButton_RCEcho_clicked()
+{
+    cur_IPAddress = ui->comboBox_IPAddress->currentText();
+    cur_IPPort = ui->lineEdit_IPPort->text();
+    QString str_addr = cur_IPAddress+":"+cur_IPPort;
+    QString url = "http://"+str_addr;
+
+    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
+
+    QNetworkRequest request;
+
+    request.setUrl(url);
+    // 设置HTTP头信息
+    request.setRawHeader("Message", "ECHO");
+    request.setRawHeader("Host", str_addr.toLatin1());
+    request.setRawHeader("Connection", "keep-alive");
+
+    connect(manager, &QNetworkAccessManager::finished, this, &XGD_HOST::deal_http_trace);
+    // 发送Trace请求
+    manager->sendCustomRequest(request, "TRACE");
+}
+
+void XGD_HOST::on_pushButton_ListenPort_clicked()
+{
+    cur_IPAddress = ui->comboBox_IPAddress->currentText();
+    cur_IPPort = ui->lineEdit_IPPort->text();
+
+    m_tcpserver.listen(cur_IPAddress, cur_IPPort.toUInt());
+    qDebug()<<"Listen UDP Address:"<<cur_IPAddress;
+    qDebug()<<"Listen UDP Port:"<<cur_IPPort.toUInt();
+
+    connect(&m_tcpserver, &TCPServer::dataReceived, this, &XGD_HOST::deal_tcp_data);
+    commuType = COMMU_TCP;
+
+    show_message("Start Listen on:  "+cur_IPAddress+":"+cur_IPPort+"\n");
+}
+
+void XGD_HOST::on_pushButton_ClosePort_clicked()
+{
+    m_tcpserver.closeConnection();
+    show_message("Close Connection\n");
+}
+
+void XGD_HOST::deal_tcp_data(QByteArray data)
+{
+    qDebug()<<"dataFromTerm.length:"<<data.length();
+    if(data.length() <= 0)
+    {
+        qDebug()<<"Recv Term Data is null!"<<endl;
+        QMessageBox::information(this, "info", "Receive Term Data is Null");
+        m_tcpserver.clearBuffer();
+        return ;
+    }
+
+    TraceHexFromByteArray("Recv Term Data" ,data);
+
+    if(data.at(0) != 0x02)
+    {
+        QMessageBox::critical(this, "Error", "Error protocol header!!!");
+        return ;
+    }
+
+    char temp = data.data()[1];
+    deal_term_data(data, (XGD_HOST::MsgType)(quint8)temp);
+}
+
+void XGD_HOST::on_tabWidget_Settings_tabBarClicked(int index)
+{
+    qDebug()<<"cur click index:"<<index;
+
+    if(1 == index)
+    {
+        ui->comboBox_IPAddress->clear();
+        //Update IP Address
+        QList<QNetworkInterface> interfaces = QNetworkInterface::allInterfaces();
+
+        foreach (QNetworkInterface interface, interfaces) {
+            QList<QNetworkAddressEntry> entries = interface.addressEntries();
+            foreach (QNetworkAddressEntry entry, entries) {
+                if (entry.ip().protocol() == QAbstractSocket::IPv4Protocol) {
+                    ui->comboBox_IPAddress->addItem(entry.ip().toString());
+                    qDebug() << "Interface: " << interface.humanReadableName();
+                    qDebug() << "IPv4 Address: " << entry.ip().toString();
+                    qDebug() << "--------------------------------------";
+                    // 只显示第一个 IPv4 地址，如需显示所有 IPv4 地址，可以在此处删除 break 语句
+                    //break;
+                }
+            }
+        }
+
+        ui->comboBox_IPAddress->setCurrentIndex(0);
     }
 }

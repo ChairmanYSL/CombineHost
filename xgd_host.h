@@ -17,8 +17,15 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QHttpPart>
+#include <QUdpSocket>
+#include <QAbstractSocket>
+#include "tcpserver.h"
+#include <QtNetwork/QNetworkInterface>
 
 #define STX 0x02
+#define COMMU_SERIAL 0x03
+#define COMMU_TCP    0x04
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class XGD_HOST; }
@@ -127,6 +134,18 @@ private slots:
 
     void on_pushButton_RCSingle_clicked();
 
+    void on_pushButton_RCBatch_clicked();
+
+    void resend_http_get();
+
+    void on_pushButton_RCEcho_clicked();
+
+    void on_pushButton_ListenPort_clicked();
+
+    void on_pushButton_ClosePort_clicked();
+
+    void on_tabWidget_Settings_tabBarClicked(int index);
+
 private:
     Ui::XGD_HOST *ui;
     QSerialPort m_serial;
@@ -138,6 +157,12 @@ private:
     QByteArray dataFromHttp;
     QTimer timer;
     QByteArray dataFromTerm;
+    int resend;
+    bool batchReceive = false;
+    bool AutoFlag = false;
+    QUdpSocket m_udpsock;
+    TCPServer m_tcpserver;
+    int commuType;
 
     void init_tlv_map();
     void open_log();
@@ -171,5 +196,11 @@ private:
     void serialRead();
     void show_uiRequest(QString UIRequest, int step);
     void deal_http_get(QNetworkReply *reply);
+    void deal_http_post(QByteArray dataSend);
+    void deal_http_trace(QNetworkReply *reply);
+    int send_http_get();
+    void handleUDPPortData();
+    void udpRead();
+    void deal_tcp_data(QByteArray data);
 };
 #endif // XGD_HOST_H

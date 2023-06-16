@@ -18,11 +18,13 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
 #    avl.cpp \
     main.cpp \
+    tcpserver.cpp \
     tool.cpp \
     xgd_host.cpp
 
 HEADERS += \
 #    avl.h \
+    tcpserver.h \
     tool.h \
     xgd_host.h
 
@@ -46,6 +48,8 @@ QMAKE_TARGET_COPYRIGHT = "Powered by bruce lee. All rights reserved."
 # 中文（简体）
 RC_LANG = 0x0004
 
+#忽略没有用变量但设置的警告
+QMAKE_CXXFLAGS += -Wunused-but-set-variable
 
 #UI_DIR = ./UI
 DEFINES += QT_MESSAGELOGCONTEXT

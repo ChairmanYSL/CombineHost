@@ -420,8 +420,8 @@
    <widget class="QPushButton" name="pushButton_StartTrans">
     <property name="geometry">
      <rect>
-      <x>20</x>
-      <y>340</y>
+      <x>190</x>
+      <y>320</y>
       <width>101</width>
       <height>41</height>
      </rect>
@@ -434,7 +434,7 @@
     <property name="geometry">
      <rect>
       <x>190</x>
-      <y>350</y>
+      <y>390</y>
       <width>93</width>
       <height>28</height>
      </rect>
@@ -447,13 +447,13 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>430</y>
+      <y>460</y>
       <width>291</width>
       <height>151</height>
      </rect>
     </property>
     <property name="currentIndex">
-     <number>2</number>
+     <number>1</number>
     </property>
     <widget class="QWidget" name="tab_commsetting">
      <attribute name="title">
@@ -534,27 +534,14 @@
     </widget>
     <widget class="QWidget" name="tab_othsetting">
      <attribute name="title">
-      <string>Other Setting</string>
+      <string>NetWork</string>
      </attribute>
-     <widget class="QLineEdit" name="lineEdit_IPAddress">
-      <property name="geometry">
-       <rect>
-        <x>82</x>
-        <y>20</y>
-        <width>151</width>
-        <height>31</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>127.0.0.1</string>
-      </property>
-     </widget>
      <widget class="QLineEdit" name="lineEdit_IPPort">
       <property name="geometry">
        <rect>
-        <x>82</x>
+        <x>70</x>
         <y>70</y>
-        <width>151</width>
+        <width>51</width>
         <height>31</height>
        </rect>
       </property>
@@ -586,6 +573,42 @@
       </property>
       <property name="text">
        <string>Port</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="pushButton_ListenPort">
+      <property name="geometry">
+       <rect>
+        <x>150</x>
+        <y>60</y>
+        <width>61</width>
+        <height>41</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Listen</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="pushButton_ClosePort">
+      <property name="geometry">
+       <rect>
+        <x>220</x>
+        <y>60</y>
+        <width>51</width>
+        <height>41</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Close</string>
+      </property>
+     </widget>
+     <widget class="QComboBox" name="comboBox_IPAddress">
+      <property name="geometry">
+       <rect>
+        <x>80</x>
+        <y>20</y>
+        <width>140</width>
+        <height>31</height>
+       </rect>
       </property>
      </widget>
     </widget>
@@ -633,6 +656,63 @@
       </property>
      </widget>
     </widget>
+    <widget class="QWidget" name="tab_RCSetting">
+     <attribute name="title">
+      <string>RC Test Setting</string>
+     </attribute>
+     <widget class="QLabel" name="label_TimeDelay">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>70</y>
+        <width>81</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Time Delay</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="lineEdit_TimeDelay">
+      <property name="geometry">
+       <rect>
+        <x>102</x>
+        <y>66</y>
+        <width>151</width>
+        <height>31</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>1</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="lineEdit_Resend">
+      <property name="geometry">
+       <rect>
+        <x>102</x>
+        <y>16</y>
+        <width>151</width>
+        <height>31</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>3</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_Resend">
+      <property name="geometry">
+       <rect>
+        <x>30</x>
+        <y>20</y>
+        <width>72</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Resend</string>
+      </property>
+     </widget>
+    </widget>
    </widget>
    <widget class="QGroupBox" name="groupBox_Message">
     <property name="geometry">
@@ -652,7 +732,7 @@
        <x>3</x>
        <y>20</y>
        <width>461</width>
-       <height>551</height>
+       <height>581</height>
       </rect>
      </property>
     </widget>
@@ -662,7 +742,7 @@
        <x>442</x>
        <y>21</y>
        <width>21</width>
-       <height>549</height>
+       <height>579</height>
       </rect>
      </property>
      <property name="orientation">
@@ -756,6 +836,52 @@
      <bool>true</bool>
     </property>
    </widget>
+   <widget class="QGroupBox" name="groupBox_TransType_2">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>320</y>
+      <width>141</width>
+      <height>61</height>
+     </rect>
+    </property>
+    <property name="title">
+     <string>TransType</string>
+    </property>
+    <widget class="QLineEdit" name="lineEdit_TransType_2">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>20</y>
+       <width>121</width>
+       <height>31</height>
+      </rect>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QGroupBox" name="groupBox_TransType_4">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>380</y>
+      <width>141</width>
+      <height>61</height>
+     </rect>
+    </property>
+    <property name="title">
+     <string>TransType</string>
+    </property>
+    <widget class="QLineEdit" name="lineEdit_TransType_4">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>20</y>
+       <width>121</width>
+       <height>31</height>
+      </rect>
+     </property>
+    </widget>
+   </widget>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QMenuBar" name="menubar">
@@ -764,7 +890,7 @@
      <x>0</x>
      <y>0</y>
      <width>1320</width>
-     <height>26</height>
+     <height>23</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_F">
